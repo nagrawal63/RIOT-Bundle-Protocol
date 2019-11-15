@@ -202,6 +202,10 @@ PSEUDOMODULES += crypto_aes_precalculated
 # This pseudomodule causes a loop in AES to be unrolled (more flash, less CPU)
 PSEUDOMODULES += crypto_aes_unroll
 
+# include interface variants of BME680 drivers as pseudo modules
+PSEUDOMODULES += bme680_i2c
+PSEUDOMODULES += bme680_spi
+
 # All auto_init modules are pseudomodules
 PSEUDOMODULES += auto_init_%
 NO_PSEUDOMODULES += auto_init_can
