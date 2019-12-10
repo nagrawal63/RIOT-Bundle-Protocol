@@ -551,6 +551,10 @@ ifneq (,$(filter rn2%3,$(USEMODULE)))
   USEMODULE += fmt
 endif
 
+ifneq (,$(filter scd30,$(USEMODULE)))
+  USEMODULE += scd30
+endif
+
 ifneq (,$(filter sdcard_spi,$(USEMODULE)))
   FEATURES_REQUIRED += periph_gpio
   FEATURES_REQUIRED += periph_spi
