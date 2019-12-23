@@ -280,6 +280,10 @@ ifneq (,$(filter sds011,$(USEMODULE)))
   USEMODULE_INCLUDES += $(RIOTBASE)/drivers/sds011/include
 endif
 
+ifneq (,$(filter sdp3x,$(USEMODULE)))
+  USEMODULE_INCLUDES += $(RIOTBASE)/drivers/sdp3x/include
+endif
+
 ifneq (,$(filter sht1x,$(USEMODULE)))
   USEMODULE_INCLUDES += $(RIOTBASE)/drivers/sht1x/include
 endif

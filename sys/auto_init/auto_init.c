@@ -539,6 +539,10 @@ void auto_init(void)
     extern void auto_init_qmc5883l(void);
     auto_init_qmc5883l();
 #endif
+#ifdef MODULE_SDP3X
+    extern void auto_init_sdp3x(void);
+    auto_init_sdp3x();
+#endif
 #ifdef MODULE_SHT2X
     extern void auto_init_sht2x(void);
     auto_init_sht2x();
