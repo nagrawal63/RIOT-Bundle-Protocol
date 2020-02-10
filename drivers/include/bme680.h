@@ -38,7 +38,7 @@ typedef struct {
     uint8_t hum_os;             /**< Humidity oversampling */
     uint8_t pres_os;            /**< Pressure oversampling */
     uint8_t filter;             /**< IIR filter coefficient */
-    uint8_t en_gas_measure;     /**< Enable gas measurement */
+    uint8_t gas_measure;        /**< Enable gas measurement */
     uint16_t heater_dur;        /**< Heater duration in ms */
     uint16_t heater_temp;       /**< Heater temperature in °C */
     uint8_t power_mode;         /**< Power mode (sleep or forced) */

@@ -122,7 +122,7 @@ void scd30_cmd_ext(scd30_t *dev, uint16_t cmd, uint16_t ext)
 	buffI2C[1] = (uint8_t)cmd;
 	buffI2C[2] = (uint8_t)(ext >> 8);
 	buffI2C[3] = (uint8_t)ext;
-	scd30_crc_calc(buffI2C, 5);
+	scd30_crc_calc(buffI2C+2, 3);
 	i2c_write_bytes(SCD30_I2C, SCD30_I2C_ADDRESS, buffI2C, 5, 0);
 	i2c_release(SCD30_I2C);
 }

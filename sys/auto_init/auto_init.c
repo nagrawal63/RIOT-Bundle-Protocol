@@ -370,8 +370,8 @@ void auto_init(void)
 #endif
 
 #ifdef MODULE_SCD30
-	extern void auto_init_scd30(void);
-	auto_init_scd30();
+	//extern void auto_init_scd30(void);
+	//auto_init_scd30();
 #endif
 
 #ifdef MODULE_AUTO_INIT_SAUL
