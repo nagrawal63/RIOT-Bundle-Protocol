@@ -1,6 +1,3 @@
-ifneq (,$(filter gnrc_dhcpv6,$(USEMODULE)))
-  DIRS += application_layer/dhcpv6
-endif
 ifneq (,$(filter gnrc_icmpv6,$(USEMODULE)))
   DIRS += network_layer/icmpv6
 endif
@@ -90,6 +87,15 @@ ifneq (,$(filter gnrc_rpl_p2p,$(USEMODULE)))
 endif
 ifneq (,$(filter gnrc_sixlowpan,$(USEMODULE)))
   DIRS += network_layer/sixlowpan
+endif
+ifneq (,$(filter gnrc_bp,$(USEMODULE)))
+  DIRS += network_layer/bundle_protocol
+endif
+ifneq (,$(filter gnrc_contact_manager,$(USEMODULE)))
+  DIRS += network_layer/bundle_protocol/contact_manager
+endif
+ifneq (,$(filter gnrc_contact_scheduler_periodic,$(USEMODULE)))
+  DIRS += network_layer/bundle_protocol/contact_scheduler
 endif
 ifneq (,$(filter gnrc_sixlowpan_ctx,$(USEMODULE)))
   DIRS += network_layer/sixlowpan/ctx

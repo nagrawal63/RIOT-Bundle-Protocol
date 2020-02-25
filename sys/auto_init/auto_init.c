@@ -24,15 +24,15 @@
 #include "diskio.h"
 #endif
 
-#ifdef MODULE_AUTO_INIT_XTIMER
+#ifdef MODULE_XTIMER
 #include "xtimer.h"
 #endif
 
-#ifdef MODULE_AUTO_INIT_GNRC_SIXLOWPAN
+#ifdef MODULE_GNRC_SIXLOWPAN
 #include "net/gnrc/sixlowpan.h"
 #endif
 
-#ifdef MODULE_AUTO_INIT_GNRC_IPV6
+#ifdef MODULE_GNRC_IPV6
 #include "net/gnrc/ipv6.h"
 #endif
 
@@ -40,19 +40,19 @@
 #include "l2_ping.h"
 #endif
 
-#ifdef MODULE_AUTO_INIT_GNRC_PKTBUF
+#ifdef MODULE_GNRC_PKTBUF
 #include "net/gnrc/pktbuf.h"
 #endif
 
-#ifdef MODULE_AUTO_INIT_GNRC_PKTDUMP
+#ifdef MODULE_GNRC_PKTDUMP
 #include "net/gnrc/pktdump.h"
 #endif
 
-#ifdef MODULE_AUTO_INIT_GNRC_UDP
+#ifdef MODULE_GNRC_UDP
 #include "net/gnrc/udp.h"
 #endif
 
-#ifdef MODULE_AUTO_INIT_GNRC_TCP
+#ifdef MODULE_GNRC_TCP
 #include "net/gnrc/tcp.h"
 #endif
 
@@ -72,7 +72,7 @@
 #include "net/gcoap.h"
 #endif
 
-#ifdef MODULE_AUTO_INIT_GNRC_IPV6_NIB
+#ifdef MODULE_GNRC_IPV6_NIB
 #include "net/gnrc/ipv6/nib.h"
 #endif
 
@@ -96,6 +96,19 @@
 #include "schedstatistics.h"
 #endif
 
+
+#ifdef MODULE_GNRC_BP
+#include "net/gnrc/bp.h"
+#endif
+
+#ifdef MODULE_GNRC_CONTACT_MANAGER
+#include "net/gnrc/bundle_protocol/contact_manager.h"
+#endif
+
+#ifdef MODULE_GNRC_CONTACT_SCHEDULER_PERIODIC
+#include "net/gnrc/bundle_protocol/contact_scheduler_periodic.h"
+#endif
+
 #ifdef MODULE_TEST_UTILS_INTERACTIVE_SYNC
 #if !defined(MODULE_SHELL_COMMANDS) || !defined(MODULE_SHELL)
 #include "test_utils/interactive_sync.h"
@@ -107,20 +120,16 @@
 
 void auto_init(void)
 {
-#ifdef MODULE_AUTO_INIT_RANDOM
+#ifdef MODULE_PRNG
     void auto_init_random(void);
     auto_init_random();
 #endif
-#ifdef MODULE_AUTO_INIT_XTIMER
+#ifdef MODULE_XTIMER
     DEBUG("Auto init xtimer module.\n");
     xtimer_init();
 #endif
 #ifdef MODULE_SCHEDSTATISTICS
     init_schedstatistics();
-#endif
-#ifdef MODULE_EVENT_THREAD
-    extern void auto_init_event_thread(void);
-    auto_init_event_thread();
 #endif
 #ifdef MODULE_MCI
     DEBUG("Auto init mci module.\n");
@@ -130,31 +139,43 @@ void auto_init(void)
     extern void profiling_init(void);
     profiling_init();
 #endif
-#ifdef MODULE_AUTO_INIT_GNRC_PKTBUF
+#ifdef MODULE_GNRC_PKTBUF
     DEBUG("Auto init gnrc_pktbuf module\n");
     gnrc_pktbuf_init();
 #endif
-#ifdef MODULE_AUTO_INIT_GNRC_PKTDUMP
+#ifdef MODULE_GNRC_PKTDUMP
     DEBUG("Auto init gnrc_pktdump module.\n");
     gnrc_pktdump_init();
 #endif
-#ifdef MODULE_AUTO_INIT_GNRC_SIXLOWPAN
+#ifdef MODULE_GNRC_SIXLOWPAN
     DEBUG("Auto init gnrc_sixlowpan module.\n");
     gnrc_sixlowpan_init();
 #endif
-#ifdef MODULE_AUTO_INIT_GNRC_IPV6
+#ifdef MODULE_GNRC_BP
+    DEBUG("Auto init gnrc_bp module.\n");
+    gnrc_bp_init();
+#endif
+#ifdef MODULE_GNRC_CONTACT_MANAGER
+    DEBUG("Auto init gnrc_contact_manager module.\n");
+    gnrc_contact_manager_init();
+#endif
+#ifdef MODULE_GNRC_CONTACT_SCHEDULER_PERIODIC
+    DEBUG("Auto init gnrc_contact_scheduler_periodic module.\n");
+    gnrc_contact_scheduler_periodic_init();
+#endif
+#ifdef MODULE_GNRC_IPV6
     DEBUG("Auto init gnrc_ipv6 module.\n");
     gnrc_ipv6_init();
 #endif
-#ifdef MODULE_AUTO_INIT_GNRC_UDP
+#ifdef MODULE_GNRC_UDP
     DEBUG("Auto init UDP module.\n");
     gnrc_udp_init();
 #endif
-#ifdef MODULE_AUTO_INIT_GNRC_TCP
+#ifdef MODULE_GNRC_TCP
     DEBUG("Auto init TCP module\n");
     gnrc_tcp_init();
 #endif
-#ifdef MODULE_AUTO_INIT_LWIP
+#ifdef MODULE_LWIP
     DEBUG("Bootstraping lwIP.\n");
     lwip_bootstrap();
 #endif
@@ -163,7 +184,7 @@ void auto_init(void)
     openthread_bootstrap();
 #endif
 #ifdef MODULE_GCOAP
-    if (!IS_ACTIVE(CONFIG_GCOAP_NO_AUTO_INIT)) {
+    if (!IS_ACTIVE(GCOAP_NO_AUTO_INIT)) {
         DEBUG("Auto init gcoap module.\n");
         gcoap_init();
     }
@@ -173,7 +194,7 @@ void auto_init(void)
     extern void auto_init_devfs(void);
     auto_init_devfs();
 #endif
-#ifdef MODULE_AUTO_INIT_GNRC_IPV6_NIB
+#ifdef MODULE_GNRC_IPV6_NIB
     DEBUG("Auto init gnrc_ipv6_nib module.\n");
     gnrc_ipv6_nib_init();
 #endif
@@ -223,7 +244,7 @@ void auto_init(void)
     auto_init_stm32_eth();
 #endif
 
-#ifdef MODULE_AUTO_INIT_AT86RF2XX
+#ifdef MODULE_AT86RF2XX
     extern void auto_init_at86rf2xx(void);
     auto_init_at86rf2xx();
 #endif
@@ -347,7 +368,7 @@ void auto_init(void)
 
 #endif /* MODULE_AUTO_INIT_GNRC_NETIF */
 
-#ifdef MODULE_AUTO_INIT_GNRC_UHCPC
+#ifdef MODULE_GNRC_UHCPC
     extern void auto_init_gnrc_uhcpc(void);
     auto_init_gnrc_uhcpc();
 #endif
@@ -464,10 +485,6 @@ void auto_init(void)
 #ifdef MODULE_ISL29020
     extern void auto_init_isl29020(void);
     auto_init_isl29020();
-#endif
-#ifdef MODULE_ITG320X
-    extern void auto_init_itg320x(void);
-    auto_init_itg320x();
 #endif
 #ifdef MODULE_JC42
     extern void auto_init_jc42(void);
@@ -606,7 +623,7 @@ void auto_init(void)
 
 #ifdef MODULE_AUTO_INIT_GNRC_RPL
 
-#ifdef MODULE_AUTO_INIT_GNRC_RPL
+#ifdef MODULE_GNRC_RPL
     extern void auto_init_gnrc_rpl(void);
     auto_init_gnrc_rpl();
 #endif
@@ -636,15 +653,6 @@ void auto_init(void)
     extern void suit_init_conditions(void);
     suit_init_conditions();
 #endif /* MODULE_SUIT */
-
-#ifdef MODULE_AUTO_INIT_SECURITY
-
-#ifdef MODULE_CRYPTOAUTHLIB
-    extern void auto_init_atca(void);
-    auto_init_atca();
-#endif  /* MODULE_CRYPTOAUTHLIB */
-
-#endif  /* MODULE_AUTO_INIT_SECURITY */
 
 #ifdef MODULE_TEST_UTILS_INTERACTIVE_SYNC
 #if !defined(MODULE_SHELL_COMMANDS) || !defined(MODULE_SHELL)
