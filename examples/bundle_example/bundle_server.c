@@ -45,6 +45,7 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
   (void) port_str;
   (void) data;
   struct actual_bundle* bundle = create_bundle();
+  
   printf("Created non null bundle since bundle = %s.\n", !bundle?"NOT NULL":"NULL");
 }
 //

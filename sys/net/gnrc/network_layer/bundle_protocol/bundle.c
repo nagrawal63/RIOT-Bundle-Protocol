@@ -2,7 +2,7 @@
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 
-
+// Assuming the endpoint_scheme is the same for the src, dest and report nodes
 static bool is_fragment_bundle(struct actual_bundle* bundle);
 static void decode_primary_block_element(nanocbor_value_t *decoder, struct actual_bundle* bundle, uint8_t element);
 static void decode_canonical_block_element(nanocbor_value_t* decoder, struct bundle_canonical_block_t* block, uint8_t element);
@@ -43,7 +43,7 @@ bool is_same_bundle(struct actual_bundle* current_bundle, struct actual_bundle* 
 
 static bool is_fragment_bundle(struct actual_bundle* bundle)
 {
-  return (bundle->primary_block.flags && FLAG_IDENTIFICATION_MASK == 1);
+  return (bundle->primary_block.flags && FRAGMENT_IDENTIFICATION_MASK == 1);
 }
 
 int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc)
@@ -453,12 +453,126 @@ uint32_t calculate_crc_32(uint8_t type)
   return 0;
 }
 
+void calculate_primary_flag(uint64_t *flag, bool is_fragment, bool dont_fragment)
+{
+  if(is_fragment){
+    *flag |= FRAGMENT_IDENTIFICATION_MASK;
+  }
+  if(dont_fragment){
+    *flag |= FRAGMENT_IDENTIFICATION_MASK << 2;
+  }
+
+  return ;
+}
+
 struct actual_bundle* create_bundle(void)
 {
   struct actual_bundle* bundle = get_space_for_bundle();
   bundle->num_of_blocks=0;
   bundle->other_blocks=NULL;
   return bundle;
+}
+
+
+void fill_bundle(struct actual_bundle* bundle, uint8_t endpoint_scheme, char* dest_eid, char* report_eid, int lifetime, int crc_type)
+{
+  // TODO: Change later
+  int zero_val = 0;
+  uint32_t zero_arr = {0,0};
+
+  //Local vars
+  uint64_t primary_flag = 0;
+  bool is_fragment= check_if_fragment_bundle();
+  bool dont_fragment = true;
+
+  calculate_primary_flag(&primary_flag, is_fragment, dont_fragment);
+
+  // Setting the primary block fields first
+  if(!bundle_set_attribute(bundle, VERSION, &BP_VERSION)){
+    DEBUG("bundle: Could not set version in bundle");
+    return ;
+  }
+
+  if(!bundle_set_attribute(bundle, FLAGS_PRIMARY, primary_flag)){
+    DEBUG("bundle: Could not set bundle primary flag");
+    return ;
+  }
+
+  if(!bundle_set_attribute(bundle, ENDPOINT_SCHEME, endpoint_scheme)){
+    DEBUG("bundle: Could not set bundle endpoint scheme");
+    return ;
+  }
+
+  if(!bundle_set_attribute(bundle, CRC_TYPE_PRIMARY, &crc_type)){
+    DEBUG("bundle: Could not set bundle crc_type");
+    return ;
+  }
+
+  if(!bundle_set_attribute(bundle, SRC_EID, get_src_eid())){
+    DEBUG("bundle: Could not set bundle src eid");
+    return ;
+  }
+  if(!bundle_set_attribute(bundle, DST_EID, dst_eid)){
+    DEBUG("bundle: Could not set bundle dst eid");
+    return ;
+  }
+  if(!bundle_set_attribute(bundle, REPORT_EID, report_eid)){
+    DEBUG("bundle: Could not set bundle report eid");
+    return ;
+  }
+
+  if(!check_if_node_has_clock()){
+    if(!bundle_set_attribute(bundle, CREATION_TIMESTAMP, zero_arr)){
+      DEBUG("bundle: Could not set bundle creation time");
+      return ;
+    }
+  }else{
+    // TODO: Implement creation_timestamp thing is the node actually has clock
+  }
+
+  if(!bundle_set_attribute(bundle, LIFETIME, &lifetime)){
+    DEBUG("bundle: Could not set bundle lifetime");
+    return ;
+  }
+
+  if(!is_fragment){
+    if(!bundle_set_attribute(bundle, FRAGMENT_OFFSET, &zero_val)){
+      DEBUG("bundle: Could not set bundle lifetime");
+      return ;
+    }
+    if(!bundle_set_attribute(bundle, TOTAL_APPLICATION_DATA_LENGTH, &zero_val)){
+      DEBUG("bundle: Could not set bundle lifetime");
+      return ;
+    }
+  }
+
+  switch(crc_type){
+    case NOCRC:
+      {
+        if(!bundle_set_attribute(bundle, CRC_PRIMARY, 0)){
+          DEBUG("bundle: Could not set bundle crc");
+          return ;
+        }
+        break;
+      }
+    case CRC_16:
+    {
+      if(!bundle_set_attribute(bundle, CRC_PRIMARY, calculate_crc_16(BUNDLE_BLOCK_TYPE_PRIMARY))){
+        DEBUG("bundle: Could not set bundle crc");
+        return ;
+      }
+      break;
+    }
+    case CRC_32:
+    {
+      if(!bundle_set_attribute(bundle, CRC_PRIMARY, calculate_crc_32(BUNDLE_BLOCK_TYPE_PRIMARY))){
+        DEBUG("bundle: Could not set bundle crc");
+        return ;
+      }
+      break;
+    }
+  }
+
 }
 
 struct bundle_primary_block_t* bundle_get_primary_block(struct actual_bundle* bundle)
@@ -525,9 +639,29 @@ uint8_t bundle_get_attribute(struct actual_bundle* bundle, uint8_t type, void* v
       val = &bundle->primary_block.flags;
       return 1;
     }
+    case ENDPOINT_SCHEME:
+    {
+      val = &bundle->primary_block.endpoint_scheme;
+      return 1;
+    }
     case CRC_TYPE_PRIMARY:
     {
       val = &bundle->primary_block.crc_type;
+      return 1;
+    }
+    case SRC_EID:
+    {
+      val = &bundle->primary_block.src_eid;
+      return 1;
+    }
+    case DST_EID:
+    {
+      val = &bundle->primary_block.dst_eid;
+      return 1;
+    }
+    case REPORT_EID:
+    {
+      val = &bundle->primary_block.report_eid;
       return 1;
     }
     case CREATION_TIMESTAMP:
@@ -557,7 +691,7 @@ uint8_t bundle_get_attribute(struct actual_bundle* bundle, uint8_t type, void* v
     }
   }
   printf("%s",(char*)val);
-  return -1;
+  return 0;
 }
 uint8_t bundle_set_attribute(struct actual_bundle* bundle, uint8_t type, void* val)
 {
@@ -572,9 +706,29 @@ uint8_t bundle_set_attribute(struct actual_bundle* bundle, uint8_t type, void* v
       bundle->primary_block.flags=*(uint16_t*)val;
       return 1;
     }
+    case ENDPOINT_SCHEME:
+    {
+      bundle->primary_block.endpoint_scheme = *(uint8_t)val;
+      return 1;
+    }
     case CRC_TYPE_PRIMARY:
     {
       bundle->primary_block.crc_type=*(uint8_t*)val;
+      return 1;
+    }
+    case SRC_EID:
+    {
+      bundle->primary_block.src_eid = (char*) val;
+      return 1;
+    }
+    case DST_EID:
+    {
+      bundle->primary_block.dst_eid = (char*) val;
+      return 1;
+    }
+    case REPORT_EID:
+    {
+      bundle->primary_block.report_eid = (char*) val;
       return 1;
     }
     case CREATION_TIMESTAMP:
@@ -603,11 +757,30 @@ uint8_t bundle_set_attribute(struct actual_bundle* bundle, uint8_t type, void* v
       return 1;
     }
   }
-  return -1;
+  return 0;
 }
 
 void print_bundle(struct actual_bundle* bundle)
 {
   (void) bundle;
   return ;
+}
+
+/*
+ * Dummy functions to check various things
+ * to be implemented later if need be
+*/
+char *get_src_eid(void)
+{
+  return DUMMY_EID;
+}
+
+bool check_if_fragment_bundle(void)
+{
+    return false;
+}
+
+bool check_if_node_has_clock(void)
+{
+  return false;
 }

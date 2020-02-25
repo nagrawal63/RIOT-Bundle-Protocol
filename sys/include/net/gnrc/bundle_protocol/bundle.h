@@ -9,6 +9,9 @@
 
 #include "nanocbor/nanocbor.h"
 
+#define BP_VERSION 7
+#define DUMMY_EID "test"
+
 //Codes to segregate between primary and canonical block
 #define BUNDLE_BLOCK_TYPE_PRIMARY 0x88
 #define BUNDLE_BLOCK_TYPE_CANONICAL 0x89
@@ -24,7 +27,7 @@
 #define CRC_16 0x01
 #define CRC_32 0x02
 
-#define FLAG_IDENTIFICATION_MASK 0X001
+#define FRAGMENT_IDENTIFICATION_MASK 0X001
 
 #define BLOCK_DATA_BUF_SIZE 100
 //#define MAX_ENDPOINT_SIZE 10
@@ -33,8 +36,12 @@
 enum primary_block_elements{
   VERSION,
   FLAGS_PRIMARY,
+  ENDPOINT_SCHEME,
   CRC_TYPE_PRIMARY,
   EID,
+  SRC_EID,
+  DST_EID,
+  REPORT_EID,
   CREATION_TIMESTAMP,
   LIFETIME,
   FRAGMENT_OFFSET,
@@ -64,7 +71,7 @@ struct endpoint{
 
 struct bundle_primary_block_t{ // This is the order in which the elements of the block are encoded
   uint8_t version;
-  uint16_t flags;
+  uint64_t flags;
   uint8_t endpoint_scheme; // TODO: Assuming the dest and src nodes will have same endpoint scheme
   uint8_t crc_type;
   uint8_t* dest_eid;
@@ -80,7 +87,7 @@ struct bundle_primary_block_t{ // This is the order in which the elements of the
 struct bundle_canonical_block_t{
   uint8_t type;
   uint8_t block_number;
-  uint8_t flags;
+  uint64_t flags;
   uint8_t crc_type;
   uint8_t block_data[BLOCK_DATA_BUF_SIZE];
   uint32_t crc;
@@ -97,8 +104,10 @@ void insert_block_in_bundle(struct actual_bundle* bundle, struct bundle_canonica
 bool is_same_bundle(struct actual_bundle* current_bundle, struct actual_bundle* compare_to_bundle);
 uint16_t calculate_crc_16(uint8_t type);
 uint32_t calculate_crc_32(uint8_t type);
+void calculate_primary_flag(uint64_t *flag, bool is_fragment, bool dont_fragment);
 
 struct actual_bundle* create_bundle(void);
+void fill_bundle(struct actual_bundle* bundle, uint8_t endpoint_scheme, char* dest_eid, char* report_eid, int lifetime, int crc_type);
 int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc);
 int bundle_decode(struct actual_bundle* bundle, uint8_t *buffer, size_t buf_len);
 
@@ -112,4 +121,9 @@ uint8_t bundle_get_attribute(struct actual_bundle* bundle, uint8_t type, void* v
 uint8_t bundle_set_attribute(struct actual_bundle* bundle, uint8_t type, void* val);
 
 void print_bundle(struct actual_bundle* bundle);
+
+char *get_src_eid(void);
+bool check_if_fragment_bundle(void);
+bool check_if_node_has_clock(void);
+
 #endif
