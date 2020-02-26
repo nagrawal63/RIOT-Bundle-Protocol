@@ -23,18 +23,16 @@
 #include <inttypes.h>
 
 #include "net/gnrc.h"
-#include "net/gnrc/ipv6.h"
 #include "net/gnrc/netif.h"
 #include "net/gnrc/netif/hdr.h"
-#include "net/gnrc/udp.h"
 #include "net/gnrc/pktdump.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
+#include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "timex.h"
 #include "utlist.h"
 #include "xtimer.h"
 
-static gnrc_netreg_entry_t server = GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL,
-                                                               KERNEL_PID_UNDEF);
+static gnrc_netreg_entry_t bundle_server = GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL, KERNEL_PID_UNDEF);
 
 static void send_bundle(char *dtn_dst, char *port_str, char *data)
 {
@@ -44,9 +42,30 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
   (void) dtn_dst;
   (void) port_str;
   (void) data;
-  struct actual_bundle* bundle = create_bundle();
-  
-  printf("Created non null bundle since bundle = %s.\n", !bundle?"NOT NULL":"NULL");
+
+  struct actual_bundle *bundle1, *bundle2, *bundle3 ;
+  if((bundle1= create_bundle()) == NULL){
+    printf("Could not create bundle.\n");
+    return;
+  }
+  print_bundle_storage();
+  fill_bundle(bundle1, 7, DTN, dtn_dst, NULL, 1, NOCRC);
+  // printf("bundle: Set version to %d.\n",bundle1->primary_block.version);
+  print_bundle(bundle1);
+  if((bundle2 = create_bundle()) == NULL){
+    printf("Could not create bundle.\n");
+    return;
+  }
+  fill_bundle(bundle2, 7, DTN, dtn_dst, NULL, 1, NOCRC);
+  print_bundle_storage();
+  if((bundle3= create_bundle()) == NULL){
+    printf("Could not create bundle.\n");
+    return;
+  }
+  fill_bundle(bundle3, 7, DTN, dtn_dst, NULL, 1, NOCRC);
+  print_bundle_storage();
+  delete_bundle(bundle1);
+  print_bundle_storage();
 }
 //
 // static void send(char *addr_str, char *port_str, char *data, unsigned int num,
@@ -131,14 +150,14 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
 //     }
 // }
 
-static void start_server(char *port_str)
+static void start_bundle_server(char *port_str)
 {
     uint16_t port;
 
-    /* check if server is already running */
-    if (server.target.pid != KERNEL_PID_UNDEF) {
-        printf("Error: server already running on port %" PRIu32 "\n",
-               server.demux_ctx);
+    /* check if bundle_server is already running */
+    if (bundle_server.target.pid != KERNEL_PID_UNDEF) {
+        printf("Error: bundle_server already running on port %" PRIu32 "\n",
+               bundle_server.demux_ctx);
         return;
     }
     /* parse port */
@@ -147,30 +166,30 @@ static void start_server(char *port_str)
         puts("Error: invalid port specified");
         return;
     }
-    /* start server (which means registering pktdump for the chosen port) */
-    server.target.pid = gnrc_pktdump_pid;
-    server.demux_ctx = (uint32_t)port;
-    gnrc_netreg_register(GNRC_NETTYPE_BP, &server);
-    printf("Success: started UDP server on port %" PRIu16 "\n", port);
+    /* start bundle_server (which means registering pktdump for the chosen port) */
+    bundle_server.target.pid = gnrc_pktdump_pid;
+    bundle_server.demux_ctx = (uint32_t)port;
+    gnrc_netreg_register(GNRC_NETTYPE_BP, &bundle_server);
+    printf("Success: started bundle_server on port %" PRIu16 "\n", port);
 }
 
-static void stop_server(void)
+static void stop_bundle_server(void)
 {
-    /* check if server is running at all */
-    if (server.target.pid == KERNEL_PID_UNDEF) {
-        printf("Error: server was not running\n");
+    /* check if bundle_server is running at all */
+    if (bundle_server.target.pid == KERNEL_PID_UNDEF) {
+        printf("Error: bundle_server was not running\n");
         return;
     }
-    /* stop server */
-    gnrc_netreg_unregister(GNRC_NETTYPE_BP, &server);
-    server.target.pid = KERNEL_PID_UNDEF;
-    puts("Success: stopped UDP server");
+    /* stop bundle_server */
+    gnrc_netreg_unregister(GNRC_NETTYPE_BP, &bundle_server);
+    bundle_server.target.pid = KERNEL_PID_UNDEF;
+    puts("Success: stopped bundle_server");
 }
 
-int udp_cmd(int argc, char **argv)
+int bundle_cmd(int argc, char **argv)
 {
     if (argc < 2) {
-        printf("usage: %s [send|server]\n", argv[0]);
+        printf("usage: %s [send|bundle_server]\n", argv[0]);
         return 1;
     }
 
@@ -190,20 +209,20 @@ int udp_cmd(int argc, char **argv)
         // }
         send_bundle(argv[2], argv[3], argv[4]);
     }
-    else if (strcmp(argv[1], "server") == 0) {
+    else if (strcmp(argv[1], "bundle_server") == 0) {
         if (argc < 3) {
-            printf("usage: %s server [start|stop]\n", argv[0]);
+            printf("usage: %s bundle_server [start|stop]\n", argv[0]);
             return 1;
         }
         if (strcmp(argv[2], "start") == 0) {
             if (argc < 4) {
-                printf("usage %s server start <port>\n", argv[0]);
+                printf("usage %s bundle_server start <port>\n", argv[0]);
                 return 1;
             }
-            start_server(argv[3]);
+            start_bundle_server(argv[3]);
         }
         else if (strcmp(argv[2], "stop") == 0) {
-            stop_server();
+            stop_bundle_server();
         }
         else {
             puts("error: invalid command");
