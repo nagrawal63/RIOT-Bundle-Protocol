@@ -6,10 +6,11 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 #include "nanocbor/nanocbor.h"
+#include "fmt.h"
 
-#define BP_VERSION 7
 #define DUMMY_EID "test"
 
 //Codes to segregate between primary and canonical block
@@ -27,7 +28,7 @@
 #define CRC_16 0x01
 #define CRC_32 0x02
 
-#define FRAGMENT_IDENTIFICATION_MASK 0X001
+#define FRAGMENT_IDENTIFICATION_MASK 0x0000000000000001
 
 #define BLOCK_DATA_BUF_SIZE 100
 //#define MAX_ENDPOINT_SIZE 10
@@ -107,7 +108,7 @@ uint32_t calculate_crc_32(uint8_t type);
 void calculate_primary_flag(uint64_t *flag, bool is_fragment, bool dont_fragment);
 
 struct actual_bundle* create_bundle(void);
-void fill_bundle(struct actual_bundle* bundle, uint8_t endpoint_scheme, char* dest_eid, char* report_eid, int lifetime, int crc_type);
+void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dest_eid, char* report_eid, int lifetime, int crc_type);
 int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc);
 int bundle_decode(struct actual_bundle* bundle, uint8_t *buffer, size_t buf_len);
 

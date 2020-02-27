@@ -43,7 +43,8 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
   (void) port_str;
   (void) data;
 
-  struct actual_bundle *bundle1, *bundle2, *bundle3 ;
+  // struct actual_bundle *bundle1, *bundle2, *bundle3 ;
+  struct actual_bundle *bundle1;
   if((bundle1= create_bundle()) == NULL){
     printf("Could not create bundle.\n");
     return;
@@ -52,21 +53,40 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
   fill_bundle(bundle1, 7, DTN, dtn_dst, NULL, 1, NOCRC);
   // printf("bundle: Set version to %d.\n",bundle1->primary_block.version);
   print_bundle(bundle1);
-  if((bundle2 = create_bundle()) == NULL){
-    printf("Could not create bundle.\n");
-    return;
+  // if((bundle2 = create_bundle()) == NULL){
+  //   printf("Could not create bundle.\n");
+  //   return;
+  // }
+  // fill_bundle(bundle2, 7, DTN, dtn_dst, NULL, 1, NOCRC);
+  // print_bundle_storage();
+  // if((bundle3= create_bundle()) == NULL){
+  //   printf("Could not create bundle.\n");
+  //   return;
+  // }
+  // fill_bundle(bundle3, 7, DTN, dtn_dst, NULL, 1, NOCRC);
+  // print_bundle_storage();
+  // delete_bundle(bundle1);
+  // print_bundle_storage();
+
+  //Bundle getting encoded
+  nanocbor_encoder_t enc;
+  nanocbor_encoder_init(&enc, NULL, 0);
+  bundle_encode(bundle1, &enc);
+  size_t required_size = nanocbor_encoded_len(&enc);
+  uint8_t *buf = malloc(required_size);
+  nanocbor_encoder_init(&enc, buf, required_size);
+  bundle_encode(bundle1, &enc);
+  printf("Encoded bundle: \n");
+  for(int i=0;i<(int)required_size;i++){
+    printf("%02x",buf[i]);
   }
-  fill_bundle(bundle2, 7, DTN, dtn_dst, NULL, 1, NOCRC);
-  print_bundle_storage();
-  if((bundle3= create_bundle()) == NULL){
-    printf("Could not create bundle.\n");
-    return;
-  }
-  fill_bundle(bundle3, 7, DTN, dtn_dst, NULL, 1, NOCRC);
-  print_bundle_storage();
-  delete_bundle(bundle1);
-  print_bundle_storage();
+  printf("\n");
+
+  int iface = 9;
+  //Send bundle
+  gnrc_netapi_send(iface,(gnrc_pktsnip_t*) buf);
 }
+
 //
 // static void send(char *addr_str, char *port_str, char *data, unsigned int num,
 //                  unsigned int delay)

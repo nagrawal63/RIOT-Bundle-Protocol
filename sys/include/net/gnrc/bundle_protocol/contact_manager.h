@@ -9,8 +9,11 @@
 extern "C" {
 #endif
 
-struct neighbors{
-  
+//Don't implement linked list stuff for this. Rather directly use
+//inbuilt LL stuff of RIOT
+struct neighbor_t{
+  char* eid; // Neighbor's bp addr
+  struct neighbor_t *next;
 };
 
 /**

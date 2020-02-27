@@ -37,6 +37,8 @@ void send(char *addr_str, int data)
   (void)addr_str;
   (void)data;
 
+  struct actual_bundle *bundle = create_bundle();
+  fill_bundle()
 
 }
 
