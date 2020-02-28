@@ -35,6 +35,7 @@
 #include "at86rf215_netdev.h"
 #include "at86rf215_internal.h"
 
+#define ENABLE_DEBUG (1)
 #include "debug.h"
 
 static int _send(netdev_t *netdev, const iolist_t *iolist);
@@ -109,6 +110,7 @@ static int _init(netdev_t *netdev)
 
 static int _send(netdev_t *netdev, const iolist_t *iolist)
 {
+    DEBUG("[at86rf215]: Trying to send bundle.\n");
     at86rf215_t *dev = (at86rf215_t *)netdev;
     size_t len = 0;
 

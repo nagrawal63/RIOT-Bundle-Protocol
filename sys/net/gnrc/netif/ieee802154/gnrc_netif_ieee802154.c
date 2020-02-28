@@ -21,7 +21,7 @@
 #include "net/ipv6/hdr.h"
 #endif
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG (1)
 #include "debug.h"
 
 #if defined(MODULE_OD) && ENABLE_DEBUG
@@ -253,6 +253,7 @@ static int _send(gnrc_netif_t *netif, gnrc_pktsnip_t *pkt)
     else {
         dst = gnrc_netif_hdr_get_dst_addr(netif_hdr);
         dst_len = netif_hdr->dst_l2addr_len;
+        DEBUG("_send_ieee802154: dst: %s, dst_len: %u.\n", dst, dst_len);
     }
     src_len = netif_hdr->src_l2addr_len;
     if (src_len > 0) {
@@ -261,6 +262,7 @@ static int _send(gnrc_netif_t *netif, gnrc_pktsnip_t *pkt)
     else {
         src_len = netif->l2addr_len;
         src = netif->l2addr;
+        DEBUG("_send_ieee802154: src: %s, src_len: %u.\n", src, src_len);
     }
     /* fill MAC header, seq should be set by device */
     if ((res = ieee802154_set_frame_hdr(mhr, src, src_len,

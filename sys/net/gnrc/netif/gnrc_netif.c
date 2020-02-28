@@ -36,7 +36,7 @@
 #include "net/gnrc/netif.h"
 #include "net/gnrc/netif/internal.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG    (1)
 #include "debug.h"
 
 static gnrc_netif_t _netifs[GNRC_NETIF_NUMOF];
@@ -1406,6 +1406,7 @@ static void *_gnrc_netif_thread(void *args)
                 dev->driver->isr(dev);
                 break;
             case GNRC_NETAPI_MSG_TYPE_SND:
+                // DEBUG("gnrc_netif: is frame filter enabled : %d.\n",at86rf215_get_framefilter_enabled(dev, 0));
                 DEBUG("gnrc_netif: GNRC_NETDEV_MSG_TYPE_SND received\n");
                 res = netif->ops->send(netif, msg.content.ptr);
                 if (res < 0) {
