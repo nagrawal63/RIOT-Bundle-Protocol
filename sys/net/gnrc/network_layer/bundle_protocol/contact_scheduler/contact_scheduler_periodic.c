@@ -3,6 +3,11 @@
 #include "xtimer.h"
 
 #include "net/gnrc/bundle_protocol/contact_scheduler_periodic.h"
+#include "net/gnrc/bundle_protocol/bundle.h"
+#include "net/gnrc/bundle_protocol/bundle_storage.h"
+#include "net/gnrc/pkt.h"
+#include "net/gnrc/netif/internal.h"
+#include "net/gnrc.h"
 
 #define ENABLE_DEBUG  (1)
 #include "debug.h"
@@ -32,23 +37,76 @@ kernel_pid_t gnrc_contact_scheduler_periodic_init(void)
   return _pid;
 }
 
-void send(char *addr_str, int data)
+uint8_t *_encode_discovery_bundle(struct actual_bundle *bundle)
+{
+  nanocbor_encoder_t enc;
+  nanocbor_encoder_init(&enc, NULL, 0);
+  bundle_encode(bundle, &enc);
+  size_t required_size = nanocbor_encoded_len(&enc);
+  uint8_t *buf = malloc(required_size);
+  nanocbor_encoder_init(&enc, buf, required_size);
+  bundle_encode(bundle, &enc);
+  return buf;
+}
+
+int send(char *addr_str, int data, int iface)
 {
   (void)addr_str;
   (void)data;
+  bundle_storage_init();
+  gnrc_pktsnip_t *discovery_packet;
+  gnrc_netif_t *netif = NULL;
 
   struct actual_bundle *bundle = create_bundle();
-  fill_bundle()
+  fill_bundle(bundle, 7, DTN, BROADCAST_EID, NULL, 1, NOCRC);
+  print_bundle(bundle);
+  uint8_t *buf_data = _encode_discovery_bundle(bundle);
+  if(buf_data == NULL) {
+    DEBUG("contact_scheduler: Unable to encode bundle.\n");
+    delete_bundle(bundle);
+    return ERROR;
+  }
+  printf("Encoded bundle: ");
+  for(int i=0;i<(int)strlen((char*) buf_data);i++){
+    printf("%02x",buf_data[i]);
+  }
+  printf(" at %p\n", bundle);
+  discovery_packet = gnrc_pktbuf_add(NULL, buf_data, strlen((char*)buf_data), GNRC_NETTYPE_UNDEF);
+  if (discovery_packet == NULL) {
+    DEBUG("contact_scheduler: unable to copy data to discovery packet buffer.\n");
+    delete_bundle(bundle);
+    return ERROR;
+  }
 
+  netif = gnrc_netif_get_by_pid(iface);
+
+  if (netif != NULL) {
+          gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
+          printf("netif hdr data is %s.\n",(char *)netif_hdr->data);
+          gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
+          LL_PREPEND(discovery_packet, netif_hdr);
+  }
+
+  if(!gnrc_netapi_dispatch_send(GNRC_NETTYPE_CONTACT_MANAGER, GNRC_NETREG_DEMUX_CTX_ALL, discovery_packet)) {
+    DEBUG("contact_scheduler: Unable to find BP thread.\n");
+    gnrc_pktbuf_release(discovery_packet);
+    delete_bundle(bundle);
+    return ERROR;
+  }
+  return 0;
 }
 
 void *contact_scheduler (void *args)
 {
   (void)args;
+  int iface = 8;
   while(1){
     //message send command to discover new nodes
     DEBUG("Trying to send discovery packet.\n");
-    send(BROADCAST_DEST_ID, DISCOVERY_SEND_DATA);
+    DEBUG("Scheduling discovery packet over hard coded interface : %d.\n", iface);
+    if(send(BROADCAST_DEST_ID, DISCOVERY_SEND_DATA, iface) < 0) {
+      DEBUG("contact_scheduler: Couldn't send discovery packet.\n");
+    }
     xtimer_sleep(CONTACT_PERIOD_SECONDS);
   }
   return NULL;

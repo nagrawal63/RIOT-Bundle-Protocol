@@ -81,27 +81,28 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
     printf("%02x",buf[i]);
   }
   printf(" at %p\n", bundle1);
-  // gnrc_pktsnip_t *payload = gnrc_pktbuf_add(NULL, buf, required_size, GNRC_NETTYPE_BP);
+  gnrc_pktsnip_t *payload = gnrc_pktbuf_add(NULL, buf, required_size, GNRC_NETTYPE_BP);
   int iface = 9;
   gnrc_netif_t *netif = NULL;
   netif = gnrc_netif_get_by_pid(iface);
-  // if (netif != NULL) {
-  //         gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
-  //         printf("netif hdr data is %s.\n",(char *)netif_hdr->data);
-  //         gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
-  //         LL_PREPEND(payload, netif_hdr);
-  //     }
+  if (netif != NULL) {
+          gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
+          printf("netif hdr data is %s.\n",(char *)netif_hdr->data);
+          gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
+          LL_PREPEND(payload, netif_hdr);
+  }
   //Send bundle
-  netdev_t *dev = netif->dev;
-  uint8_t mhr[IEEE802154_MAX_HDR_LEN] = {0};
-  // gnrc_netapi_send(iface,(gnrc_pktsnip_t*)buf);
-  iolist_t iolist = {
-      .iol_next = (iolist_t *)buf,
-      .iol_base = mhr,
-      .iol_len = required_size
-  };
-  int res = dev->driver->send(dev, &iolist);
-  printf("Result of sending finally is: %d.\n",res);
+  // netdev_t *dev = netif->dev;
+  // uint8_t mhr[IEEE802154_MAX_HDR_LEN] = {0};
+  gnrc_netapi_send(iface, payload);
+  // iolist_t iolist = {
+  //     .iol_next = (iolist_t *)buf,
+  //     .iol_base = mhr,
+  //     .iol_len = required_size
+  // };
+  // int res = dev->driver->send(dev, &iolist);
+  //Packet too large because it designed to travel over like a list
+  // printf("Result of sending finally is: %d.\n",res);
 }
 
 //

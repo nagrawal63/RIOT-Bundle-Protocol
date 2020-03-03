@@ -18,8 +18,9 @@ static char _stack[GNRC_CONTACT_MANAGER_STACK_SIZE + THREAD_EXTRA_STACKSIZE_PRIN
 static char _stack[GNRC_CONTACT_MANAGER_STACK_SIZE];
 #endif
 
+static gnrc_pktsnip_t *_create_netif_hdr(uint8_t *dst_l2addr, unsigned dst_l2addr_len, gnrc_pktsnip_t *pkt, uint8_t flags);
 static void _receive(void);
-static void _send(void);
+static void _send(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void* args);
 
 kernel_pid_t gnrc_contact_manager_init(void)
@@ -34,15 +35,68 @@ kernel_pid_t gnrc_contact_manager_init(void)
   return _pid;
 }
 
+static gnrc_pktsnip_t *_create_netif_hdr(uint8_t *dst_l2addr, unsigned dst_l2addr_len, gnrc_pktsnip_t *pkt, uint8_t flags)
+{
+  gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, dst_l2addr, dst_l2addr_len);
+  gnrc_netif_hdr_t *hdr;
+
+  if (netif_hdr == NULL) {
+      DEBUG("contact_manager: error on interface header allocation, dropping packet\n");
+      gnrc_pktbuf_release(pkt);
+      return NULL;
+  }
+  hdr = netif_hdr->data;
+  /* previous netif header might have been allocated by some higher layer
+   * to provide some flags (provided to us via netif_flags). */
+  hdr->flags = flags;
+
+  /* add netif_hdr to front of the pkt list */
+  LL_PREPEND(pkt, netif_hdr);
+
+  return pkt;
+}
 
 static void _receive(void)
 {
 
 }
 
-static void _send(void)
+static void _send(gnrc_pktsnip_t *pkt)
 {
+  gnrc_netif_t *netif = NULL;
+  gnrc_pktsnip_t *tmp_pkt;
+  uint8_t netif_hdr_flags = 0U;
+  int iface = 0;
 
+  if(pkt->type == GNRC_NETTYPE_NETIF) {
+    const gnrc_netif_hdr_t *netif_hdr = pkt->data;
+
+    netif = gnrc_netif_hdr_get_netif(pkt->data);
+    /* discard broadcast and multicast flags because those could be
+     * potentially wrong (dst is later checked to assure that multicast is
+     * set if dst is a multicast address) */
+    netif_hdr_flags = netif_hdr->flags &
+                      ~(GNRC_NETIF_HDR_FLAGS_BROADCAST |
+                        GNRC_NETIF_HDR_FLAGS_MULTICAST);
+
+    tmp_pkt = gnrc_pktbuf_start_write(pkt);
+    if (tmp_pkt == NULL) {
+        DEBUG("contact_manager: unable to get write access to netif header, dropping packet\n");
+        gnrc_pktbuf_release(pkt);
+        return;
+    }
+    pkt = gnrc_pktbuf_remove_snip(tmp_pkt, tmp_pkt);
+  }
+  // TODO: Add destination l2adrr and addr length here instead of NULL and 0.
+  if ((pkt = _create_netif_hdr(NULL, 0, pkt, netif_hdr_flags | GNRC_NETIF_HDR_FLAGS_BROADCAST)) == NULL) {
+    return ;
+  }
+  iface = netif->pid;
+
+  if(iface != 0) {
+    DEBUG("contact_manager: Sending discovery packet.\n");
+    gnrc_netapi_send(iface, pkt);
+  }
 }
 
 static void *_event_loop(void *args)
@@ -61,7 +115,7 @@ static void *_event_loop(void *args)
     switch(msg.type){
       case GNRC_NETAPI_MSG_TYPE_SND:
           DEBUG("contact_manager: GNRC_NETDEV_MSG_TYPE_SND received\n");
-          _send();
+          _send(msg.content.ptr);
           break;
       case GNRC_NETAPI_MSG_TYPE_RCV:
           DEBUG("contact_manager: GNRC_NETDEV_MSG_TYPE_RCV received\n");

@@ -249,6 +249,7 @@ static int _send(gnrc_netif_t *netif, gnrc_pktsnip_t *pkt)
         (GNRC_NETIF_HDR_FLAGS_BROADCAST | GNRC_NETIF_HDR_FLAGS_MULTICAST)) {
         dst = ieee802154_addr_bcast;
         dst_len = IEEE802154_ADDR_BCAST_LEN;
+        DEBUG("_send_ieee802154: dst: %s, dst_len: %u with broadcast.\n", dst, dst_len);
     }
     else {
         dst = gnrc_netif_hdr_get_dst_addr(netif_hdr);
@@ -268,7 +269,7 @@ static int _send(gnrc_netif_t *netif, gnrc_pktsnip_t *pkt)
     if ((res = ieee802154_set_frame_hdr(mhr, src, src_len,
                                         dst, dst_len, dev_pan,
                                         dev_pan, flags, state->seq++)) == 0) {
-        DEBUG("_send_ieee802154: Error preperaring frame\n");
+        DEBUG("_send_ieee802154: Error preparing frame\n");
         return -EINVAL;
     }
 

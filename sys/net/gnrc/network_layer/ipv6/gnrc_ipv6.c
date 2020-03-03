@@ -296,6 +296,7 @@ static gnrc_pktsnip_t *_create_netif_hdr(uint8_t *dst_l2addr,
                                          gnrc_pktsnip_t *pkt,
                                          uint8_t flags)
 {
+    DEBUG("ipv6: inside _create_netif_hdr.\n");
     gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, dst_l2addr, dst_l2addr_len);
     gnrc_netif_hdr_t *hdr;
 
@@ -641,9 +642,10 @@ static void _send(gnrc_pktsnip_t *pkt, bool prep_hdr)
     gnrc_pktsnip_t *tmp_pkt;
     ipv6_hdr_t *ipv6_hdr;
     uint8_t netif_hdr_flags = 0U;
-
+    DEBUG("ipv6: packet has type: %d and netif type is: %d.\n", pkt->type, GNRC_NETTYPE_NETIF);
     /* get IPv6 snip and (if present) generic interface header */
     if (pkt->type == GNRC_NETTYPE_NETIF) {
+        DEBUG("ipv6: Netif header already there in packet.\n");
         /* If there is already a netif header (routing protocols and
          * neighbor discovery might add them to preset sending interface or
          * higher layers wants to provide flags to the interface ) */
@@ -669,6 +671,7 @@ static void _send(gnrc_pktsnip_t *pkt, bool prep_hdr)
          * Also re-establish temporary pointer used for write protection as
          * actual pointer */
         pkt = gnrc_pktbuf_remove_snip(tmp_pkt, tmp_pkt);
+        DEBUG("ipv6: Current packet type after removing a snip from packet is : %d.\n", pkt->type);
     }
     if (pkt->type != GNRC_NETTYPE_IPV6) {
         DEBUG("ipv6: unexpected packet type\n");

@@ -82,6 +82,7 @@ static inline void _addr_set_multicast(uint8_t *dst, gnrc_pktsnip_t *payload)
 
 static int _send(gnrc_netif_t *netif, gnrc_pktsnip_t *pkt)
 {
+  DEBUG("gnrc_netif_ethernet: inside gnrc_netif_ethernet.\n");
     ethernet_hdr_t hdr;
     gnrc_netif_hdr_t *netif_hdr;
     gnrc_pktsnip_t *payload;

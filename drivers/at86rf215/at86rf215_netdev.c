@@ -120,7 +120,7 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
 
     /* load packet data into FIFO */
     for (const iolist_t *iol = iolist; iol; iol = iol->iol_next) {
-
+        DEBUG("[at86rf215]: in for loop n times with packet type: %d.\n", ((gnrc_pktsnip_t*)iol)->type);
         /* current packet data + FCS too long */
         if ((len + iol->iol_len + IEEE802154_FCS_LEN) > AT86RF215_MAX_PKT_LENGTH) {
             DEBUG("[at86rf215] error: packet too large (%u byte) to be send\n",
@@ -136,6 +136,7 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
 
     /* send data out directly if pre-loading id disabled */
     if (!(dev->flags & AT86RF215_OPT_PRELOADING)) {
+        DEBUG("[at86rf215]: Loading without preloading with data = %s.\n", (char*)((gnrc_pktsnip_t*)iolist)->data);
         at86rf215_tx_exec(dev);
     }
 

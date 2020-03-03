@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "net/gnrc/bundle_protocol/contact_manager_config.h"
+#include "net/gnrc/ipv6/nib/conf.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,6 +14,8 @@ extern "C" {
 //inbuilt LL stuff of RIOT
 struct neighbor_t{
   char* eid; // Neighbor's bp addr
+  uint8_t l2addr [GNRC_IPV6_NIB_L2ADDR_MAX_LEN];
+  uint8_t 	l2addr_len;
   struct neighbor_t *next;
 };
 

@@ -16,14 +16,16 @@ GNRC_NETIF_NUMOF := 2
 USEMODULE += gnrc_netdev_default
 USEMODULE += auto_init_gnrc_netif
 # Activate ICMPv6 error messages
+# USEMODULE +=gnrc_sixlowpan
+# USEMODULE +=gnrc_ipv6
 USEMODULE += gnrc_icmpv6_error
 # Specify the mandatory networking modules for IPv6 and UDP
-USEMODULE += gnrc_ipv6_router_default
+# USEMODULE += gnrc_ipv6_router_default
 # USEMODULE += gnrc_ipv6_nib
 # USEMODULE += gnrc_udp
 USEMODULE += gnrc_bp
 USEMODULE += gnrc_contact_manager
-# USEMODULE += gnrc_contact_scheduler_periodic
+USEMODULE += gnrc_contact_scheduler_periodic
 # Add a routing protocol
 # USEMODULE += gnrc_rpl
 # USEMODULE += auto_init_gnrc_rpl

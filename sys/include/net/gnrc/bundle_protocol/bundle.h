@@ -12,6 +12,9 @@
 #include "fmt.h"
 
 #define DUMMY_EID "test"
+#define BROADCAST_EID "broadcast"
+
+#define ERROR -1
 
 //Codes to segregate between primary and canonical block
 #define BUNDLE_BLOCK_TYPE_PRIMARY 0x88

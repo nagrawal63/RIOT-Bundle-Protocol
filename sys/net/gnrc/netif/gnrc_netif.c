@@ -1409,6 +1409,7 @@ static void *_gnrc_netif_thread(void *args)
                 // DEBUG("gnrc_netif: is frame filter enabled : %d.\n",at86rf215_get_framefilter_enabled(dev, 0));
                 DEBUG("gnrc_netif: GNRC_NETDEV_MSG_TYPE_SND received\n");
                 res = netif->ops->send(netif, msg.content.ptr);
+                DEBUG("gnrc_netif: Loaded %d number of bytes onto the radio.\n ", res);
                 if (res < 0) {
                     DEBUG("gnrc_netif: error sending packet %p (code: %i)\n",
                           msg.content.ptr, res);
