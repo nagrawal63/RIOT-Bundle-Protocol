@@ -43,6 +43,8 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
   (void) port_str;
   (void) data;
 
+
+
   // struct actual_bundle *bundle1, *bundle2, *bundle3 ;
   struct actual_bundle *bundle1;
   if((bundle1= create_bundle()) == NULL){
@@ -192,6 +194,20 @@ static void start_bundle_server(char *port_str)
 {
     uint16_t port;
 
+
+    printf("Changing protocol of netdev for hardcoded interface %d.\n", iface);
+    int iface = 8;
+    gnrc_netif_t *netif = gnrc_netif_get_by_pid(iface);
+    netdev_t *dev = netif->dev;
+    /*  This is required so that when the packets are passed on to the upper layers when received, then the driver code passes on by attaching
+     *  the packet type to be GNRC_NETTYPE_BP and not GNRC_NETTYPE_SIXLOWPAN.
+     */
+    // Ask how to manage GNRC_NETTYPE_BP and GNRC_NETTYPE_CONTACT_MANAGER here
+    // I have the idea the packet is passed on as GNRC_NETTYPE_BP and then there is some distinguishing feature which helps identify it as 
+    // GNRC_NETTYPE_CONTACT_MANAGER and not GNRC_NETTYPE_BP
+    netdev_ieee802154_set((netdev_ieee802154_t *)netdev, NETOPT_PROTO, GNRC_NETTYPE_BP,sizeof(GNRC_NETTYPE_BP));
+
+    
     /* check if bundle_server is already running */
     if (bundle_server.target.pid != KERNEL_PID_UNDEF) {
         printf("Error: bundle_server already running on port %" PRIu32 "\n",
