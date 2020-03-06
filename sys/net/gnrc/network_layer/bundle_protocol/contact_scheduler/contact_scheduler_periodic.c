@@ -34,7 +34,7 @@ kernel_pid_t gnrc_contact_scheduler_periodic_init(void)
 
   _pid = thread_create(_stack, sizeof(_stack), GNRC_CONTACT_MANAGER_PRIO, THREAD_CREATE_STACKTEST, contact_scheduler, NULL, "contact_scheduler");
   // to be part of bundle_agent
-  bundle_storage_init();
+
   DEBUG("contact_scheduler: Thread created with pid: %d.\n", _pid);
   return _pid;
 }
@@ -60,6 +60,10 @@ int send(char *addr_str, int data, int iface)
   size_t size = 0;
 
   struct actual_bundle *bundle = create_bundle();
+  if (bundle == NULL) {
+    DEBUG("contact_scheduler: Could not obtain space for bundle.\n");
+    return ERROR;
+  }
   fill_bundle(bundle, 7, IPN, BROADCAST_EID, NULL, 1, NOCRC, CONTACT_MANAGER_SERVICE_NUM);
   print_bundle(bundle);
   uint8_t *buf_data = _encode_discovery_bundle(bundle, &size);
@@ -94,6 +98,7 @@ int send(char *addr_str, int data, int iface)
     gnrc_pktbuf_release(discovery_packet);
     return ERROR;
   }
+  // print_bundle_storage();
   delete_bundle(bundle);
   return 0;
 }

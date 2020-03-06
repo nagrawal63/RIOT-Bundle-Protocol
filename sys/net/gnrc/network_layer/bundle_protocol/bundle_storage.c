@@ -3,6 +3,9 @@
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
 
+#define ENABLE_DEBUG (0)
+#include "debug.h"
+
 static uint8_t next_block_number = 0;
 struct bundle_list* free_list;
 struct bundle_list* head_of_store;
@@ -55,6 +58,7 @@ struct actual_bundle* get_space_for_bundle(void)
 bool delete_bundle(struct actual_bundle* bundle)
 {
 
+  DEBUG("bundle_storage: Inside delete bundle.\n");
   struct bundle_list* previous_of_to_delete_node = get_previous_bundle_in_list(bundle);
   struct bundle_list* to_delete_node = NULL;
 
@@ -83,8 +87,11 @@ uint8_t get_next_block_number(void)
 
 struct bundle_list* get_previous_bundle_in_list(struct actual_bundle* bundle)
 {
+    DEBUG("bundle_storage: Inside get previous bundle.\n");
+    print_bundle_storage();
     struct bundle_list* temp = head_of_store;
-    if(is_same_bundle(&temp->current_bundle, bundle)){
+    if(is_same_bundle(&(temp->current_bundle), bundle)){
+      DEBUG("bundle_storage: To delete first bundle.\n");
       return NULL;
     }
     while(temp->next != NULL){

@@ -5,7 +5,7 @@
 
 #include "net/gnrc/bundle_protocol/contact_manager_config.h"
 
-#define CONTACT_PERIOD_SECONDS 5
+#define CONTACT_PERIOD_SECONDS 20
 
 #ifdef __cplusplus
 extern "C" {

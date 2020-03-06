@@ -43,12 +43,13 @@ int main(void)
     puts("Bundle network stack example application");
 
     // Should be a part of the agent.
-    // bundle_storage_init();
+    bundle_storage_init();
 
     /* start shell */
     puts("All up, running the shell now");
     char line_buf[SHELL_DEFAULT_BUFSIZE];
     shell_run(shell_commands, line_buf, SHELL_DEFAULT_BUFSIZE);
+
 
     /* should be never reached */
     return 0;

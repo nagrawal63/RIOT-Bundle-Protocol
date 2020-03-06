@@ -58,7 +58,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
     bundle_decode(bundle, pkt->data, pkt->size);
     DEBUG("bp: Printing received packet!!!!!!!!!!!!!!!!!!!!.\n");
     print_bundle(bundle);
-    
+
   #ifdef MODULE_GNRC_CONTACT_MANAGER
     if (bundle->primary_block.service_num  == (uint32_t)atoi(CONTACT_MANAGER_SERVICE_NUM)) {
         if (!gnrc_netapi_dispatch_receive(GNRC_NETTYPE_CONTACT_MANAGER, GNRC_NETREG_DEMUX_CTX_ALL, pkt)) {

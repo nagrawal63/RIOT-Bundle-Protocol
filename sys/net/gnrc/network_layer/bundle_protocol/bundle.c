@@ -28,8 +28,17 @@ void insert_block_in_bundle(struct actual_bundle* bundle, struct bundle_canonica
 
 bool is_same_bundle(struct actual_bundle* current_bundle, struct actual_bundle* compare_to_bundle)
 {
-
-  if (strcmp((char*)current_bundle->primary_block.src_eid,(char*)compare_to_bundle->primary_block.src_eid) != 0){
+  if (current_bundle->primary_block.endpoint_scheme == DTN && compare_to_bundle->primary_block.endpoint_scheme == DTN) {
+    if (strcmp((char*)current_bundle->primary_block.src_eid,(char*)compare_to_bundle->primary_block.src_eid) != 0){
+      return false;
+    }
+  }
+  else if (current_bundle->primary_block.endpoint_scheme == IPN && compare_to_bundle->primary_block.endpoint_scheme == IPN) {
+    if (current_bundle->primary_block.src_num != compare_to_bundle->primary_block.src_num) {
+      return false;
+    }
+  }
+  else {
     return false;
   }
   if(!(current_bundle->primary_block.creation_timestamp[0] == compare_to_bundle->primary_block.creation_timestamp[0] && current_bundle->primary_block.creation_timestamp[1] == compare_to_bundle->primary_block.creation_timestamp[1])){
