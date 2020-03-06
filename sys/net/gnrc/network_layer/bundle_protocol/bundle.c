@@ -77,7 +77,9 @@ int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc)
       }
       // TODO: Talk about the thing written in doubt in notes and then implement this
       else if (bundle->primary_block.endpoint_scheme == IPN){
-
+        nanocbor_fmt_array(enc, 2);
+        nanocbor_fmt_uint(enc, bundle->primary_block.dst_num);
+        nanocbor_fmt_uint(enc, bundle->primary_block.service_num);
       }
 
       // encoding source endpoint
@@ -93,7 +95,9 @@ int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc)
       }
       // TODO: Talk about the thing written in doubt in notes and then implement this
       else if (bundle->primary_block.endpoint_scheme == IPN){
-
+          nanocbor_fmt_array(enc, 2);
+          nanocbor_fmt_uint(enc, bundle->primary_block.src_num);
+          nanocbor_fmt_uint(enc, bundle->primary_block.service_num);
       }
 
       // encoding report to endpoint
@@ -109,7 +113,9 @@ int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc)
       }
       // TODO: Talk about the thing written in doubt in notes and then implement this
       else if (bundle->primary_block.endpoint_scheme == IPN){
-
+        nanocbor_fmt_array(enc, 2);
+        nanocbor_fmt_uint(enc, bundle->primary_block.report_num);
+        nanocbor_fmt_uint(enc, bundle->primary_block.service_num);
       }
 
       //encoding the creation timestamp
@@ -146,6 +152,9 @@ int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc)
       // TODO: Talk about the thing written in doubt in notes and then implement this
       else if (bundle->primary_block.endpoint_scheme == IPN){
         DEBUG("bundle: endpoint scheme is IPN.\n");
+        nanocbor_fmt_array(enc, 2);
+        nanocbor_fmt_uint(enc, bundle->primary_block.dst_num);
+        nanocbor_fmt_uint(enc, bundle->primary_block.service_num);
       }
 
       // encoding source endpoint
@@ -161,7 +170,9 @@ int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc)
       }
       // TODO: Talk about the thing written in doubt in notes and then implement this
       else if (bundle->primary_block.endpoint_scheme == IPN){
-
+        nanocbor_fmt_array(enc, 2);
+        nanocbor_fmt_uint(enc, bundle->primary_block.src_num);
+        nanocbor_fmt_uint(enc, bundle->primary_block.service_num);
       }
 
       // encoding report to endpoint
@@ -177,7 +188,9 @@ int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc)
       }
       // TODO: Talk about the thing written in doubt in notes and then implement this
       else if (bundle->primary_block.endpoint_scheme == IPN){
-
+        nanocbor_fmt_array(enc, 2);
+        nanocbor_fmt_uint(enc, bundle->primary_block.report_num);
+        nanocbor_fmt_uint(enc, bundle->primary_block.service_num);
       }
 
       //encoding the creation timestamp
@@ -225,13 +238,16 @@ static void decode_primary_block_element(nanocbor_value_t *decoder, struct actua
   switch(element){
     case VERSION:
       {
+        // DEBUG("bundle: decoding bundle VERSION.\n");
         uint32_t temp;
         nanocbor_get_uint32(decoder, &temp);
         bundle->primary_block.version = temp;
+        // DEBUG("bundle: version extracted = %lu and set as %d.\n",temp, bundle->primary_block.version);
       }
       break;
     case FLAGS_PRIMARY:
       {
+        // DEBUG("bundle: decoding bundle FLAGS_PRIMARY.\n");
         uint32_t temp;
         nanocbor_get_uint32(decoder, &temp);
          bundle->primary_block.flags = temp;
@@ -239,6 +255,7 @@ static void decode_primary_block_element(nanocbor_value_t *decoder, struct actua
       break;
     case CRC_TYPE_PRIMARY:
     {
+      // DEBUG("bundle: decoding bundle CRC_TYPE_PRIMARY.\n");
       uint32_t temp;
       nanocbor_get_uint32(decoder, &temp);
       bundle->primary_block.crc_type = temp;
@@ -246,42 +263,88 @@ static void decode_primary_block_element(nanocbor_value_t *decoder, struct actua
     break;
     case EID:
     {
+      // DEBUG("bundle: decoding bundle EID.\n");
       size_t len;
       uint32_t endpt_scheme;
-      nanocbor_value_t arr;
-      nanocbor_enter_array(decoder, &arr);
-      nanocbor_get_uint32(decoder, &endpt_scheme);
+      nanocbor_value_t arr1;
+      nanocbor_enter_array(decoder, &arr1);
+      nanocbor_get_uint32(&arr1, &endpt_scheme);
       bundle->primary_block.endpoint_scheme = endpt_scheme;
-      nanocbor_get_tstr(decoder, (const uint8_t**)&bundle->primary_block.dest_eid,&len);
-      nanocbor_leave_container(decoder, &arr);
+      if (bundle->primary_block.endpoint_scheme == DTN) {
+        nanocbor_get_tstr(&arr1, (const uint8_t**)&bundle->primary_block.dest_eid,&len);
+        // DEBUG("bundle: length of decoded dst eid: %d with eid: %s.\n", len, bundle->primary_block.dest_eid);
+      }
+      else if (bundle->primary_block.endpoint_scheme == IPN) {
+        nanocbor_value_t dst_num_arr;
+        uint32_t temp;
+        nanocbor_enter_array(&arr1, &dst_num_arr);
+        nanocbor_get_uint32(&dst_num_arr, &temp);
+        bundle->primary_block.dst_num = temp;
+        nanocbor_get_uint32(&dst_num_arr, &temp);
+        bundle->primary_block.service_num = temp;
+        nanocbor_leave_container(&arr1, &dst_num_arr);
+        // DEBUG("bundle: decoded dst num: %lu and service num: %lu.\n", bundle->primary_block.dst_num, bundle->primary_block.service_num);
+      }
+      nanocbor_leave_container(decoder, &arr1);
 
-      // nanocbor_value_t arr;
-      nanocbor_enter_array(decoder, &arr);
-      nanocbor_get_uint32(decoder, &endpt_scheme);
+      nanocbor_value_t arr2;
+      nanocbor_enter_array(decoder, &arr2);
+      nanocbor_get_uint32(&arr2, &endpt_scheme);
       bundle->primary_block.endpoint_scheme = endpt_scheme;
-      nanocbor_get_tstr(decoder, (const uint8_t**)&bundle->primary_block.src_eid,&len);
-      nanocbor_leave_container(decoder, &arr);
+      if (bundle->primary_block.endpoint_scheme == DTN) {
+        nanocbor_get_tstr(&arr2, (const uint8_t**)&bundle->primary_block.src_eid,&len);
+        // DEBUG("bundle: length of decoded src eid: %d with eid: %s.\n", len, bundle->primary_block.src_eid);
+      }
+      else if (bundle->primary_block.endpoint_scheme == IPN) {
+        nanocbor_value_t src_num_arr;
+        uint32_t temp;
+        nanocbor_enter_array(&arr2, &src_num_arr);
+        nanocbor_get_uint32(&src_num_arr, &temp);
+        bundle->primary_block.src_num = temp;
+        nanocbor_get_uint32(&src_num_arr, &temp);
+        bundle->primary_block.service_num = temp;
+        nanocbor_leave_container(&arr2, &src_num_arr);
+        // DEBUG("bundle: decoded src num: %lu and service num : %lu.\n", bundle->primary_block.src_num, bundle->primary_block.service_num);
+      }
+      nanocbor_leave_container(decoder, &arr2);
 
-      // nanocbor_value_t arr;
-      nanocbor_enter_array(decoder, &arr);
-      nanocbor_get_uint32(decoder, &endpt_scheme);
+      nanocbor_value_t arr3;
+      nanocbor_enter_array(decoder, &arr3);
+      nanocbor_get_uint32(&arr3, &endpt_scheme);
       bundle->primary_block.endpoint_scheme = endpt_scheme;
-      nanocbor_get_tstr(decoder, (const uint8_t**)&bundle->primary_block.report_eid,&len);
-      nanocbor_leave_container(decoder, &arr);
-
+      if (bundle->primary_block.endpoint_scheme == DTN) {
+        nanocbor_get_tstr(&arr3, (const uint8_t**)&bundle->primary_block.report_eid,&len);
+        // DEBUG("bundle: length of decoded report eid: %d with eid: %s.\n", len, bundle->primary_block.report_eid);
+      }
+      else if (bundle->primary_block.endpoint_scheme == IPN) {
+        nanocbor_value_t report_num_arr;
+        uint32_t temp;
+        nanocbor_enter_array(&arr3, &report_num_arr);
+        nanocbor_get_uint32(&report_num_arr, &temp);
+        bundle->primary_block.report_num = temp;
+        nanocbor_get_uint32(&report_num_arr, &temp);
+        bundle->primary_block.service_num = temp;
+        nanocbor_leave_container(&arr3, &report_num_arr);
+        // DEBUG("bundle: decoded report num: %lu and service num: %lu.\n", bundle->primary_block.report_num, bundle->primary_block.service_num);
+      }
+      nanocbor_leave_container(decoder, &arr3);
+      // DEBUG("bundle: decoded src num: %lu and service num : %lu.\n", bundle->primary_block.src_num, bundle->primary_block.service_num);
+      // DEBUG("bundle: decoded service num: %lu.\n", bundle->primary_block.service_num);
     }
     break;
     case CREATION_TIMESTAMP:
     {
+      // DEBUG("bundle: decoding bundle CREATION_TIMESTAMP.\n");
       nanocbor_value_t arr;
       nanocbor_enter_array(decoder, &arr);
-      nanocbor_get_uint32(decoder, &bundle->primary_block.creation_timestamp[0]);
-      nanocbor_get_uint32(decoder, &bundle->primary_block.creation_timestamp[1]);
+      nanocbor_get_uint32(&arr, &bundle->primary_block.creation_timestamp[0]);
+      nanocbor_get_uint32(&arr, &bundle->primary_block.creation_timestamp[1]);
       nanocbor_leave_container(decoder, &arr);
     }
     break;
     case LIFETIME:
     {
+      // DEBUG("bundle: decoding bundle LIFETIME.\n");
       uint32_t lifetime;
       nanocbor_get_uint32(decoder, &lifetime);
       bundle->primary_block.lifetime = lifetime;
@@ -289,6 +352,7 @@ static void decode_primary_block_element(nanocbor_value_t *decoder, struct actua
     break;
     case FRAGMENT_OFFSET:
     {
+      // DEBUG("bundle: decoding bundle FRAGMENT_OFFSET.\n");
       if(is_fragment_bundle(bundle)){
         nanocbor_get_uint32(decoder, &bundle->primary_block.fragment_offset);
       }
@@ -299,6 +363,7 @@ static void decode_primary_block_element(nanocbor_value_t *decoder, struct actua
     break;
     case TOTAL_APPLICATION_DATA_LENGTH:
     {
+      // DEBUG("bundle: decoding bundle TOTAL_APPLICATION_DATA_LENGTH.\n");
       if(is_fragment_bundle(bundle)){
         nanocbor_get_uint32(decoder, &bundle->primary_block.total_application_data_length);
       }
@@ -309,11 +374,13 @@ static void decode_primary_block_element(nanocbor_value_t *decoder, struct actua
     break;
     case CRC_PRIMARY:
     {
+      // DEBUG("bundle: decoding bundle CRC_PRIMARY.\n");
       nanocbor_get_uint32(decoder, &bundle->primary_block.crc);
     }
     break;
     default:
     {
+      DEBUG("bundle: inside default of bundle decoding.\n");
       break;
     }
   }
@@ -375,42 +442,57 @@ static void decode_canonical_block_element(nanocbor_value_t* decoder, struct bun
 //assuming space is preallocated for the bundle here
 int bundle_decode(struct actual_bundle* bundle, uint8_t *buffer, size_t buf_len)
 {
+  DEBUG("bundle: Trying to decode bundle.\n");
   nanocbor_value_t decoder;
 
   nanocbor_decoder_init(&decoder, buffer, buf_len);
   //moving the pointer in the decoder 1 byte ahead to ignore start of indefinite array thing
   decoder.cur++;
-
+  // DEBUG("bundle: starting bundle at %02x.\n", *decoder.cur);
   //decoding and parsing the primary block
   nanocbor_value_t arr;
   nanocbor_enter_array(&decoder, &arr);
-  decode_primary_block_element(&decoder, bundle, VERSION);
-  decode_primary_block_element(&decoder, bundle, FLAGS_PRIMARY);
-  decode_primary_block_element(&decoder, bundle, CRC_TYPE_PRIMARY);
-  decode_primary_block_element(&decoder, bundle, EID);
-  decode_primary_block_element(&decoder, bundle, CREATION_TIMESTAMP);
-  decode_primary_block_element(&decoder, bundle, LIFETIME);
-  decode_primary_block_element(&decoder, bundle, FRAGMENT_OFFSET);
-  decode_primary_block_element(&decoder, bundle, TOTAL_APPLICATION_DATA_LENGTH);
-  decode_primary_block_element(&decoder, bundle, CRC_PRIMARY);
+  decode_primary_block_element(&arr, bundle, VERSION);
+  // DEBUG("bundle: printing decoded version: %d.\n", bundle->primary_block.version);
+  // DEBUG("bundle: inside bundle at %02x, %02x.\n", *decoder.cur, *arr.cur);
+  decode_primary_block_element(&arr, bundle, FLAGS_PRIMARY);
+  // DEBUG("bundle: inside bundle at %02x, %02x.\n", *decoder.cur, *arr.cur);
+  decode_primary_block_element(&arr, bundle, CRC_TYPE_PRIMARY);
+  // DEBUG("bundle: inside bundle at %02x, %02x.\n", *decoder.cur, *arr.cur);
+  decode_primary_block_element(&arr, bundle, EID);
+  // DEBUG("bundle: inside bundle at %02x, %02x.\n", *decoder.cur, *arr.cur);
+  decode_primary_block_element(&arr, bundle, CREATION_TIMESTAMP);
+  // DEBUG("bundle: inside bundle at %02x, %02x.\n", *decoder.cur, *arr.cur);
+  decode_primary_block_element(&arr, bundle, LIFETIME);
+  // DEBUG("bundle: inside bundle at %02x, %02x.\n", *decoder.cur, *arr.cur);
+  if(is_fragment_bundle(bundle)) {
+    decode_primary_block_element(&arr, bundle, FRAGMENT_OFFSET);
+    // DEBUG("bundle: inside bundle at %02x, %02x.\n", *decoder.cur, *arr.cur);
+    decode_primary_block_element(&arr, bundle, TOTAL_APPLICATION_DATA_LENGTH);
+    // DEBUG("bundle: inside bundle at %02x, %02x.\n", *decoder.cur, *arr.cur);
+  }
+  decode_primary_block_element(&arr, bundle, CRC_PRIMARY);
+  // DEBUG("bundle: inside bundle at %02x, %02x.\n", *decoder.cur, *arr.cur);
   nanocbor_leave_container(&decoder, &arr);
-
+  // DEBUG("value of src num: %lu.\n", bundle->primary_block.src_num);
   //decoding and parsing other canonical blocks
-  while(!nanocbor_at_end(&decoder)){
+  while(!(*decoder.cur == 0xFF && *(decoder.cur+1) == 0x00)){
+    // DEBUG("bundle: Inside decoding of canonical block and currently scanning %02x.\n", *decoder.cur);
     //TODO: Think of solution to prevent too much use of malloc everywhere(so that keeping track of memory becomes easier)
     struct bundle_canonical_block_t* block = (struct bundle_canonical_block_t*) malloc(sizeof(struct bundle_canonical_block_t));
     nanocbor_value_t arr;
     nanocbor_enter_array(&decoder, &arr);
-    decode_canonical_block_element(&decoder, block, TYPE);
-    decode_canonical_block_element(&decoder, block, BLOCK_NUMBER);
-    decode_canonical_block_element(&decoder, block, FLAGS_CANONICAL);
-    decode_canonical_block_element(&decoder, block, CRC_TYPE_CANONICAL);
-    decode_canonical_block_element(&decoder, block, BLOCK_DATA);
-    decode_canonical_block_element(&decoder, block, CRC_CANONICAL);
+    decode_canonical_block_element(&arr, block, TYPE);
+    decode_canonical_block_element(&arr, block, BLOCK_NUMBER);
+    decode_canonical_block_element(&arr, block, FLAGS_CANONICAL);
+    decode_canonical_block_element(&arr, block, CRC_TYPE_CANONICAL);
+    decode_canonical_block_element(&arr, block, BLOCK_DATA);
+    decode_canonical_block_element(&arr, block, CRC_CANONICAL);
     nanocbor_leave_container(&decoder, &arr);
     insert_block_in_bundle(bundle, block);
     bundle->num_of_blocks++;
   }
+  DEBUG("bundle: Finished decoding bundle.\n");
   return 1;
 }
 
@@ -485,7 +567,7 @@ struct actual_bundle* create_bundle(void)
 }
 
 
-void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dst_eid, char* report_eid, int lifetime, int crc_type)
+void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dst_eid, char* report_eid, int lifetime, int crc_type, char* service_num)
 {
   // TODO: Change later
   int zero_val = 0;
@@ -501,51 +583,75 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
   // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
   // Setting the primary block fields first
   if(!bundle_set_attribute(bundle, VERSION, &version)){
-    DEBUG("bundle: Could not set version in bundle");
+    DEBUG("bundle: Could not set version in bundle.\n");
     return ;
   }
   // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
   // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
 
   if(!bundle_set_attribute(bundle, FLAGS_PRIMARY, &primary_flag)){
-    DEBUG("bundle: Could not set bundle primary flag");
+    DEBUG("bundle: Could not set bundle primary flag.\n");
     return ;
   }
   // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
 
   if(!bundle_set_attribute(bundle, ENDPOINT_SCHEME, &endpoint_scheme)){
-    DEBUG("bundle: Could not set bundle endpoint scheme");
+    DEBUG("bundle: Could not set bundle endpoint scheme.\n");
     return ;
   }
   // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
 
   if(!bundle_set_attribute(bundle, CRC_TYPE_PRIMARY, &crc_type)){
-    DEBUG("bundle: Could not set bundle crc_type");
+    DEBUG("bundle: Could not set bundle crc_type.\n");
     return ;
   }
   // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
+  if (bundle->primary_block.endpoint_scheme == DTN) {
+    if(!bundle_set_attribute(bundle, SRC_EID, get_src_eid())){
+      DEBUG("bundle: Could not set bundle src eid.\n");
+      return ;
+    }
+      // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
 
-  if(!bundle_set_attribute(bundle, SRC_EID, get_src_eid())){
-    DEBUG("bundle: Could not set bundle src eid");
-    return ;
+    if(!bundle_set_attribute(bundle, DST_EID, dst_eid)){
+      DEBUG("bundle: Could not set bundle dst eid.\n");
+      return ;
+    }
+      // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
+
+    if(!bundle_set_attribute(bundle, REPORT_EID, report_eid)){
+      DEBUG("bundle: Could not set bundle report eid.\n");
+      return ;
+    }
   }
-    // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
+  else if (bundle->primary_block.endpoint_scheme == IPN) {
+    if(!bundle_set_attribute(bundle, SRC_NUM, get_src_num())){
+      DEBUG("bundle: Could not set bundle src num.\n");
+      return ;
+    }
+      // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
 
-  if(!bundle_set_attribute(bundle, DST_EID, dst_eid)){
-    DEBUG("bundle: Could not set bundle dst eid");
-    return ;
-  }
-    // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
+    if(!bundle_set_attribute(bundle, DST_NUM, dst_eid)){
+      DEBUG("bundle: Could not set bundle dst num.\n");
+      return ;
+    }
+      // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
 
-  if(!bundle_set_attribute(bundle, REPORT_EID, report_eid)){
-    DEBUG("bundle: Could not set bundle report eid");
-    return ;
+    if(!bundle_set_attribute(bundle, REPORT_NUM, report_eid)){
+      DEBUG("bundle: Could not set bundle report num.\n");
+      return ;
+    }
+    assert(service_num != NULL);
+    if(!bundle_set_attribute(bundle, SERVICE_NUM, service_num)) {
+      DEBUG("bundle: Could not set bundle service num.\n");
+      return ;
+    }
   }
   // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
 
   if(!check_if_node_has_clock()){
     if(!bundle_set_attribute(bundle, CREATION_TIMESTAMP, zero_arr)){
-      DEBUG("bundle: Could not set bundle creation time");
+      DEBUG("bundle: Could not set bundle creation time.\n");
       return ;
     }
   }else{
@@ -554,18 +660,18 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
   DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
 
   if(!bundle_set_attribute(bundle, LIFETIME, &lifetime)){
-    DEBUG("bundle: Could not set bundle lifetime");
+    DEBUG("bundle: Could not set bundle lifetime.\n");
     return ;
   }
   // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
 
   if(!is_fragment){
     if(!bundle_set_attribute(bundle, FRAGMENT_OFFSET, &zero_val)){
-      DEBUG("bundle: Could not set bundle lifetime");
+      DEBUG("bundle: Could not set bundle lifetime.\n");
       return ;
     }
     if(!bundle_set_attribute(bundle, TOTAL_APPLICATION_DATA_LENGTH, &zero_val)){
-      DEBUG("bundle: Could not set bundle lifetime");
+      DEBUG("bundle: Could not set bundle lifetime.\n");
       return ;
     }
   }
@@ -575,7 +681,7 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
     case NOCRC:
       {
         if(!bundle_set_attribute(bundle, CRC_PRIMARY, &zero_val)){
-          DEBUG("bundle: Could not set bundle crc");
+          DEBUG("bundle: Could not set bundle crc.\n");
           return ;
         }
         break;
@@ -584,7 +690,7 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
     {
       uint32_t crc = calculate_crc_16(BUNDLE_BLOCK_TYPE_PRIMARY);
       if(!bundle_set_attribute(bundle, CRC_PRIMARY, &crc)){
-        DEBUG("bundle: Could not set bundle crc");
+        DEBUG("bundle: Could not set bundle crc.\n");
         return ;
       }
       break;
@@ -593,7 +699,7 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
     {
       uint32_t crc = calculate_crc_32(BUNDLE_BLOCK_TYPE_PRIMARY);
       if(!bundle_set_attribute(bundle, CRC_PRIMARY, &crc)){
-        DEBUG("bundle: Could not set bundle crc");
+        DEBUG("bundle: Could not set bundle crc.\n");
         return ;
       }
       break;
@@ -691,6 +797,26 @@ uint8_t bundle_get_attribute(struct actual_bundle* bundle, uint8_t type, void* v
       val = &bundle->primary_block.report_eid;
       return 1;
     }
+    case SRC_NUM:
+    {
+      val = &bundle->primary_block.src_num;
+      return 1;
+    }
+    case DST_NUM:
+    {
+      val = &bundle->primary_block.dst_num;
+      return 1;
+    }
+    case REPORT_NUM:
+    {
+      val = &bundle->primary_block.report_num;
+      return 1;
+    }
+    case SERVICE_NUM:
+    {
+      val = &bundle->primary_block.service_num;
+      return 1;
+    }
     case CREATION_TIMESTAMP:
     {
       val = &bundle->primary_block.creation_timestamp;
@@ -762,6 +888,26 @@ uint8_t bundle_set_attribute(struct actual_bundle* bundle, uint8_t type, void* v
       bundle->primary_block.report_eid = (uint8_t*) val;
       return 1;
     }
+    case SRC_NUM:
+    {
+      bundle->primary_block.src_num = atoi((char*)val);
+      return 1;
+    }
+    case DST_NUM:
+    {
+      bundle->primary_block.dst_num = atoi((char*)val);
+      return 1;
+    }
+    case REPORT_NUM:
+    {
+      bundle->primary_block.report_num = atoi((char*)val);
+      return 1;
+    }
+    case SERVICE_NUM:
+    {
+      bundle->primary_block.service_num = atoi((char*)val);
+      return 1;
+    }
     case CREATION_TIMESTAMP:
     {
       memcpy(bundle->primary_block.creation_timestamp,(uint32_t*)val,2*sizeof(uint32_t));
@@ -801,12 +947,20 @@ void print_bundle(struct actual_bundle* bundle)
   DEBUG("\n");
   DEBUG("Bundle primary block endpoint_scheme: %d\n", bundle->primary_block.endpoint_scheme);
   DEBUG("Bundle primary block crc_type: %d\n", bundle->primary_block.crc_type);
-  DEBUG("Bundle primary block dest_eid: %s\n", (char*)bundle->primary_block.dest_eid);
-  DEBUG("Bundle primary block src_eid: %s\n", (char*)bundle->primary_block.src_eid);
-  if(bundle->primary_block.report_eid == NULL) {
-    DEBUG("Bundle primary block report_eid: 0.\n");
-  } else {
-    DEBUG("Bundle primary block report_eid: %s\n",(char*)bundle->primary_block.report_eid);
+  if(bundle->primary_block.endpoint_scheme == DTN) {
+    DEBUG("Bundle primary block dest_eid: %s\n", (char*)bundle->primary_block.dest_eid);
+    DEBUG("Bundle primary block src_eid: %s\n", (char*)bundle->primary_block.src_eid);
+    if(bundle->primary_block.report_eid == NULL) {
+      DEBUG("Bundle primary block report_eid: 0.\n");
+    } else {
+      DEBUG("Bundle primary block report_eid: %s\n",(char*)bundle->primary_block.report_eid);
+    }
+  }
+  else if (bundle->primary_block.endpoint_scheme == IPN) {
+    DEBUG("Bundle primary block dest_num: %lu\n", bundle->primary_block.dst_num);
+    DEBUG("Bundle primary block src_num: %lu\n", bundle->primary_block.src_num);
+    DEBUG("Bundle primary block report_num: %lu\n",bundle->primary_block.report_num);
+    DEBUG("Bundle primary block service_num: %lu\n",bundle->primary_block.service_num);
   }
   // DEBUG("Bundle primary block report_eid: %s\n", bundle->primary_block.report_eid == NULL ? 0 :  (char*)bundle->primary_block.report_eid);
   DEBUG("Bundle primary block creation_timestamp: %ld, %ld\n", bundle->primary_block.creation_timestamp[0], bundle->primary_block.creation_timestamp[1]);
@@ -825,7 +979,10 @@ char *get_src_eid(void)
 {
   return DUMMY_EID;
 }
-
+char *get_src_num(void)
+{
+  return DUMMY_SRC_NUM;
+}
 bool check_if_fragment_bundle(void)
 {
     return false;

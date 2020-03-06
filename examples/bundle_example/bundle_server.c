@@ -28,6 +28,7 @@
 #include "net/gnrc/pktdump.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
+#include "net/netdev/ieee802154.h"
 #include "timex.h"
 #include "utlist.h"
 #include "xtimer.h"
@@ -52,7 +53,7 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
     return;
   }
   print_bundle_storage();
-  fill_bundle(bundle1, 7, DTN, dtn_dst, NULL, 1, NOCRC);
+  fill_bundle(bundle1, 7, IPN, dtn_dst, NULL, 1, NOCRC, "1");
   // printf("bundle: Set version to %d.\n",bundle1->primary_block.version);
   print_bundle(bundle1);
   // if((bundle2 = create_bundle()) == NULL){
@@ -83,27 +84,32 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
     printf("%02x",buf[i]);
   }
   printf(" at %p\n", bundle1);
-  gnrc_pktsnip_t *payload = gnrc_pktbuf_add(NULL, buf, required_size, GNRC_NETTYPE_BP);
-  int iface = 9;
-  gnrc_netif_t *netif = NULL;
-  netif = gnrc_netif_get_by_pid(iface);
-  if (netif != NULL) {
-          gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
-          printf("netif hdr data is %s.\n",(char *)netif_hdr->data);
-          gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
-          LL_PREPEND(payload, netif_hdr);
-  }
+
+  struct actual_bundle *bundle  = create_bundle();
+  print_bundle_storage();
+  bundle_decode(bundle, buf, required_size);
+  printf("*******************printing decoded bundle **************************.\n");
+  print_bundle(bundle);
+  // gnrc_pktsnip_t *payload = gnrc_pktbuf_add(NULL, buf, required_size, GNRC_NETTYPE_BP);
+  // int iface = 9;
+  // gnrc_netif_t *netif = NULL;
+  // netif = gnrc_netif_get_by_pid(iface);
+  // if (netif != NULL) {
+  //         gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
+  //         printf("netif hdr data is %s.\n",(char *)netif_hdr->data);
+  //         gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
+  //         LL_PREPEND(payload, netif_hdr);
+  //     }
   //Send bundle
   // netdev_t *dev = netif->dev;
   // uint8_t mhr[IEEE802154_MAX_HDR_LEN] = {0};
-  gnrc_netapi_send(iface, payload);
+  // // gnrc_netapi_send(iface,(gnrc_pktsnip_t*)buf);
   // iolist_t iolist = {
   //     .iol_next = (iolist_t *)buf,
   //     .iol_base = mhr,
   //     .iol_len = required_size
   // };
   // int res = dev->driver->send(dev, &iolist);
-  //Packet too large because it designed to travel over like a list
   // printf("Result of sending finally is: %d.\n",res);
 }
 
@@ -193,21 +199,25 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
 static void start_bundle_server(char *port_str)
 {
     uint16_t port;
-
-
-    printf("Changing protocol of netdev for hardcoded interface %d.\n", iface);
-    int iface = 8;
-    gnrc_netif_t *netif = gnrc_netif_get_by_pid(iface);
-    netdev_t *dev = netif->dev;
     /*  This is required so that when the packets are passed on to the upper layers when received, then the driver code passes on by attaching
      *  the packet type to be GNRC_NETTYPE_BP and not GNRC_NETTYPE_SIXLOWPAN.
      */
-    // Ask how to manage GNRC_NETTYPE_BP and GNRC_NETTYPE_CONTACT_MANAGER here
-    // I have the idea the packet is passed on as GNRC_NETTYPE_BP and then there is some distinguishing feature which helps identify it as 
-    // GNRC_NETTYPE_CONTACT_MANAGER and not GNRC_NETTYPE_BP
-    netdev_ieee802154_set((netdev_ieee802154_t *)netdev, NETOPT_PROTO, GNRC_NETTYPE_BP,sizeof(GNRC_NETTYPE_BP));
+    /* Ask how to manage GNRC_NETTYPE_BP and GNRC_NETTYPE_CONTACT_MANAGER here
+    * I have the idea the packet is passed on as GNRC_NETTYPE_BP and then there is some distinguishing feature which helps identify it as
+    * GNRC_NETTYPE_CONTACT_MANAGER and not GNRC_NETTYPE_BP
+    * netdev_ieee802154_set((netdev_ieee802154_t *)dev, NETOPT_PROTO, (void *)GNR_NETTYPE_BP,sizeof(GNRC_NETTYPE_BP));
+    *
+    * For now only sending the packet through the SIXLOWPAN layer
+     */
+    // int nettype = GNRC_NETTYPE_BP;
+    // int iface = 9;
+    // printf("Changing protocol of netdev for hardcoded interface %d.\n", iface);
+    // gnrc_netif_t *netif = gnrc_netif_get_by_pid(iface);
+    // netdev_t *dev = netif->dev;
+    // ((netdev_ieee802154_t*)dev)->proto = GNRC_NETTYPE_BP;
 
-    
+
+
     /* check if bundle_server is already running */
     if (bundle_server.target.pid != KERNEL_PID_UNDEF) {
         printf("Error: bundle_server already running on port %" PRIu32 "\n",

@@ -180,6 +180,9 @@ static void _receive(gnrc_pktsnip_t *pkt)
 
     dispatch = payload->data;
 
+#ifdef MODULE_GNRC_BP
+payload->type = GNRC_NETTYPE_BP;
+#endif
     if (dispatch[0] == SIXLOWPAN_UNCOMP) {
         gnrc_pktsnip_t *sixlowpan;
         DEBUG("6lo: received uncompressed IPv6 packet\n");
@@ -208,6 +211,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
         payload->type = GNRC_NETTYPE_CCN;
 #elif defined(MODULE_GNRC_IPV6)
         payload->type = GNRC_NETTYPE_IPV6;
+#elif defined(MODULE_GNRC_BP)
+        payload->type = GNRC_NETTYPE_BP;
 #else
         payload->type = GNRC_NETTYPE_UNDEF;
 #endif
@@ -224,6 +229,11 @@ static void _receive(gnrc_pktsnip_t *pkt)
         DEBUG("6lo: received 6LoWPAN IPHC compressed datagram\n");
         gnrc_sixlowpan_iphc_recv(pkt, NULL, 0);
         return;
+    }
+#endif
+#ifdef MODULE_GNRC_BP
+    else if (payload->type == GNRC_NETTYPE_BP){
+        DEBUG("6lo: Inside MODULE_GNRC_BP conditional.\n");
     }
 #endif
     else {

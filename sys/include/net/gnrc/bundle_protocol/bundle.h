@@ -12,7 +12,10 @@
 #include "fmt.h"
 
 #define DUMMY_EID "test"
+#define DUMMY_SRC_NUM "1234"
 #define BROADCAST_EID "broadcast"
+
+#define CONTACT_MANAGER_SERVICE_NUM "1212"
 
 #define ERROR -1
 
@@ -46,6 +49,10 @@ enum primary_block_elements{
   SRC_EID,
   DST_EID,
   REPORT_EID,
+  SRC_NUM,
+  DST_NUM,
+  REPORT_NUM,
+  SERVICE_NUM,
   CREATION_TIMESTAMP,
   LIFETIME,
   FRAGMENT_OFFSET,
@@ -81,6 +88,10 @@ struct bundle_primary_block_t{ // This is the order in which the elements of the
   uint8_t* dest_eid;
   uint8_t* src_eid;
   uint8_t* report_eid;
+  uint32_t dst_num;
+  uint32_t src_num;
+  uint32_t report_num;
+  uint32_t service_num;
   uint32_t creation_timestamp[2];
   uint8_t lifetime;
   uint32_t fragment_offset;
@@ -111,7 +122,7 @@ uint32_t calculate_crc_32(uint8_t type);
 void calculate_primary_flag(uint64_t *flag, bool is_fragment, bool dont_fragment);
 
 struct actual_bundle* create_bundle(void);
-void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dest_eid, char* report_eid, int lifetime, int crc_type);
+void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dest_eid, char* report_eid, int lifetime, int crc_type, char* service_num);
 int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc);
 int bundle_decode(struct actual_bundle* bundle, uint8_t *buffer, size_t buf_len);
 
@@ -127,6 +138,7 @@ uint8_t bundle_set_attribute(struct actual_bundle* bundle, uint8_t type, void* v
 void print_bundle(struct actual_bundle* bundle);
 
 char *get_src_eid(void);
+char *get_src_num(void);
 bool check_if_fragment_bundle(void);
 bool check_if_node_has_clock(void);
 

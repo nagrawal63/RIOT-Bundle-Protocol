@@ -7,7 +7,10 @@
 
 #include "net/gnrc/netif.h"
 #include "net/gnrc/bp.h"
+#include "net/gnrc/bundle_protocol/bundle.h"
+#include "net/gnrc/pktbuf.h"
 #include "net/gnrc/bundle_protocol/config.h"
+#include "net/gnrc/bundle_protocol/bundle_storage.h"
 
 #define ENABLE_DEBUG    (1)
 #include "debug.h"
@@ -44,13 +47,33 @@ kernel_pid_t gnrc_bp_get_pid(void)
 
 static void _receive(gnrc_pktsnip_t *pkt)
 {
-    DEBUG("Receive type: %d\n",pkt->type);
+    DEBUG("bp: Receive type: %d with length: %d and data: %s\n",pkt->type, pkt->size, (uint8_t*)pkt->data);
+    if(pkt->data == NULL) {
+      DEBUG("bp: No data in packet, dropping it.\n");
+      gnrc_pktbuf_release(pkt);
+      return ;
+    }
+
+    struct actual_bundle *bundle = create_bundle();
+    bundle_decode(bundle, pkt->data, pkt->size);
+    DEBUG("bp: Printing received packet!!!!!!!!!!!!!!!!!!!!.\n");
+    print_bundle(bundle);
+    
+  #ifdef MODULE_GNRC_CONTACT_MANAGER
+    if (bundle->primary_block.service_num  == (uint32_t)atoi(CONTACT_MANAGER_SERVICE_NUM)) {
+        if (!gnrc_netapi_dispatch_receive(GNRC_NETTYPE_CONTACT_MANAGER, GNRC_NETREG_DEMUX_CTX_ALL, pkt)) {
+          DEBUG("bp: no contact_manager thread found\n");
+          delete_bundle(bundle);
+        }
+    }
+  #endif
+
     return ;
 }
 
 static void _send(gnrc_pktsnip_t *pkt)
 {
-    DEBUG("Send type: %d\n",pkt->type);
+    DEBUG("bp: Send type: %d\n",pkt->type);
     return ;
 }
 
@@ -65,7 +88,7 @@ static void *_event_loop(void *args)
 
   gnrc_netreg_register(GNRC_NETTYPE_BP, &me_reg);
   while(1){
-    DEBUG("BP: waiting for incoming message.\n");
+    DEBUG("bp: waiting for incoming message.\n");
     msg_receive(&msg);
     switch(msg.type){
       case GNRC_NETAPI_MSG_TYPE_SND:

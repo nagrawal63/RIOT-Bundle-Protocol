@@ -4,6 +4,7 @@
 
 #include "net/gnrc/netif.h"
 #include "net/gnrc/bundle_protocol/contact_manager.h"
+#include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc.h"
 #include "net/gnrc/netif.h"
 
@@ -19,7 +20,7 @@ static char _stack[GNRC_CONTACT_MANAGER_STACK_SIZE];
 #endif
 
 static gnrc_pktsnip_t *_create_netif_hdr(uint8_t *dst_l2addr, unsigned dst_l2addr_len, gnrc_pktsnip_t *pkt, uint8_t flags);
-static void _receive(gnrc_pktsnip_t *pkt);
+static void _receive(struct actual_bundle *bundle);
 static void _send(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void* args);
 
@@ -56,26 +57,11 @@ static gnrc_pktsnip_t *_create_netif_hdr(uint8_t *dst_l2addr, unsigned dst_l2add
   return pkt;
 }
 
-static void _receive(gnrc_pktsnip_t *pkt)
+static void _receive(struct actual_bundle *bundle)
 {
-  gnrc_netif_t *netif = NULL;
-  gnrc_pktsnip_t *netif_hdr;
-  assert(pkt != NULL);
+  (void) bundle;
 
-  netif_hdr = gnrc_pktsnip_search_type(pkt, GNRC_NETTYPE_NETIF);
-
-  if (netif_hdr != NULL) {
-    netif = gnrc_netif_hdr_get_netif(netif_hdr->data);
-    DEBUG("contact_manager: netif is %s.\n", !netif?"not null": "null");
-  }
-
-  if (pkt->data == NULL) {
-    DEBUG("contact_manager: discovery_packet received is not discovery type, dropping it.\n");
-    gnrc_pktbuf_release(pkt);
-    return;
-  }
-
-  DEBUG("contact_manager: size of discovry packet received is %d and data in it is %s.\n", pkt->size, (char*) pkt->data);
+  return ;
 }
 
 static void _send(gnrc_pktsnip_t *pkt)

@@ -33,6 +33,7 @@ kernel_pid_t gnrc_contact_scheduler_periodic_init(void)
   }
 
   _pid = thread_create(_stack, sizeof(_stack), GNRC_CONTACT_MANAGER_PRIO, THREAD_CREATE_STACKTEST, contact_scheduler, NULL, "contact_scheduler");
+  // to be part of bundle_agent
   bundle_storage_init();
   DEBUG("contact_scheduler: Thread created with pid: %d.\n", _pid);
   return _pid;
@@ -59,7 +60,7 @@ int send(char *addr_str, int data, int iface)
   size_t size = 0;
 
   struct actual_bundle *bundle = create_bundle();
-  fill_bundle(bundle, 7, DTN, BROADCAST_EID, NULL, 1, NOCRC);
+  fill_bundle(bundle, 7, IPN, BROADCAST_EID, NULL, 1, NOCRC, CONTACT_MANAGER_SERVICE_NUM);
   print_bundle(bundle);
   uint8_t *buf_data = _encode_discovery_bundle(bundle, &size);
   if(buf_data == NULL) {
@@ -82,12 +83,12 @@ int send(char *addr_str, int data, int iface)
   netif = gnrc_netif_get_by_pid(iface);
 
   if (netif != NULL) {
-          gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
-          printf("netif hdr data is %s.\n",(char *)netif_hdr->data);
-          gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
-          LL_PREPEND(discovery_packet, netif_hdr);
+      gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
+      printf("contact_scheduler: netif hdr data is %s.\n",(char *)netif_hdr->data);
+      gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
+      LL_PREPEND(discovery_packet, netif_hdr);
   }
-
+  DEBUG("contact_scheduler: Dispatching packet send.\n");
   if(!gnrc_netapi_dispatch_send(GNRC_NETTYPE_CONTACT_MANAGER, GNRC_NETREG_DEMUX_CTX_ALL, discovery_packet)) {
     DEBUG("contact_scheduler: Unable to find BP thread.\n");
     gnrc_pktbuf_release(discovery_packet);

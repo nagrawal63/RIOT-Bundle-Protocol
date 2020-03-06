@@ -1477,7 +1477,7 @@ static void *_gnrc_netif_thread(void *args)
 static void _pass_on_packet(gnrc_pktsnip_t *pkt)
 {
     /* throw away packet if no one is interested */
-    DEBUG("gnrc_netif:Type of packet received is %d, GNRC_NETTYPE_SIXLOWPAN is %d and GNRC_NETTYPE_CONTACT_MANAGER is %d.\n", pkt->type, GNRC_NETTYPE_SIXLOWPAN, GNRC_NETTYPE_CONTACT_MANAGER);
+    // DEBUG("gnrc_netif:Type of packet received is %d, GNRC_NETTYPE_SIXLOWPAN is %d and GNRC_NETTYPE_CONTACT_MANAGER is %d.\n", pkt->type, GNRC_NETTYPE_SIXLOWPAN, GNRC_NETTYPE_CONTACT_MANAGER);
     if (!gnrc_netapi_dispatch_receive(pkt->type, GNRC_NETREG_DEMUX_CTX_ALL, pkt)) {
         DEBUG("gnrc_netif: unable to forward packet of type %i\n", pkt->type);
         gnrc_pktbuf_release(pkt);
