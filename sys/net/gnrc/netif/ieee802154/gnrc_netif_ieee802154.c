@@ -95,6 +95,7 @@ static inline bool _already_received(gnrc_netif_t *netif,
 
 static gnrc_pktsnip_t *_recv(gnrc_netif_t *netif)
 {
+    DEBUG("_recv_ieee802154: Receiving packet.\n");
     netdev_t *dev = netif->dev;
     netdev_ieee802154_rx_info_t rx_info;
     gnrc_pktsnip_t *pkt = NULL;
@@ -121,6 +122,7 @@ static gnrc_pktsnip_t *_recv(gnrc_netif_t *netif)
 #endif
 
         if (netif->flags & GNRC_NETIF_FLAGS_RAWMODE) {
+            DEBUG("_recv_ieee802154: receiving in raw mode .\n");
             /* Raw mode, skip packet processing, but provide rx_info via
              * GNRC_NETTYPE_NETIF */
             gnrc_pktsnip_t *netif_snip = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
@@ -136,6 +138,8 @@ static gnrc_pktsnip_t *_recv(gnrc_netif_t *netif)
             LL_APPEND(pkt, netif_snip);
         }
         else {
+            DEBUG("_recv_ieee802154: receiving in normal mode .\n");
+
             /* Normal mode, try to parse the frame according to IEEE 802.15.4 */
             gnrc_pktsnip_t *ieee802154_hdr, *netif_hdr;
             gnrc_netif_hdr_t *hdr;
@@ -192,8 +196,11 @@ static gnrc_pktsnip_t *_recv(gnrc_netif_t *netif)
 
             hdr->lqi = rx_info.lqi;
             hdr->rssi = rx_info.rssi;
+
             gnrc_netif_hdr_set_netif(hdr, netif);
-            dev->driver->get(dev, NETOPT_PROTO, &pkt->type, sizeof(pkt->type));
+
+            int res = dev->driver->get(dev, NETOPT_PROTO, &pkt->type, sizeof(pkt->type));
+            DEBUG("_recv_ieee802154: Result of getting the prtoto is %d.\n", res);
 #if ENABLE_DEBUG
             DEBUG("_recv_ieee802154: received packet from %s of length %u\n",
                   gnrc_netif_addr_to_str(gnrc_netif_hdr_get_src_addr(hdr),
@@ -203,6 +210,7 @@ static gnrc_pktsnip_t *_recv(gnrc_netif_t *netif)
 #if defined(MODULE_OD)
             od_hex_dump(pkt->data, nread, OD_WIDTH_DEFAULT);
 #endif
+            DEBUG("_recv_ieee802154: received packet is of type:%d.\n", pkt->type);
 #endif
             gnrc_pktbuf_remove_snip(pkt, ieee802154_hdr);
             LL_APPEND(pkt, netif_hdr);
@@ -210,6 +218,7 @@ static gnrc_pktsnip_t *_recv(gnrc_netif_t *netif)
 
         DEBUG("_recv_ieee802154: reallocating.\n");
         gnrc_pktbuf_realloc_data(pkt, nread);
+
     } else if (bytes_expected > 0) {
         DEBUG("_recv_ieee802154: received frame is too short\n");
         dev->driver->recv(dev, NULL, bytes_expected, NULL);

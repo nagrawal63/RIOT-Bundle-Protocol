@@ -110,7 +110,7 @@ static int _init(netdev_t *netdev)
 
 static int _send(netdev_t *netdev, const iolist_t *iolist)
 {
-    DEBUG("[at86rf215]: Trying to send bundle.\n");
+    DEBUG("[at86rf215]: Trying to send packet.\n");
     at86rf215_t *dev = (at86rf215_t *)netdev;
     size_t len = 0;
 
@@ -147,6 +147,7 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
 
 static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
 {
+    DEBUG("Receiving packet.\n");
     at86rf215_t *dev = (at86rf215_t *)netdev;
     int16_t pkt_len;
 
@@ -333,6 +334,8 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
 
     if (((res = netdev_ieee802154_get((netdev_ieee802154_t *)netdev, opt, val,
                                       max_len)) >= 0) || (res != -ENOTSUP)) {
+        DEBUG("ask why netdev_ieee802154 is returning dev->proto.\n");
+        DEBUG("at86rf215_netdev: returning %d from netdev_... \n", res);
         return res;
     }
 

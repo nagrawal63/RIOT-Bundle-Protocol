@@ -19,7 +19,7 @@ static char _stack[GNRC_CONTACT_MANAGER_STACK_SIZE];
 #endif
 
 static gnrc_pktsnip_t *_create_netif_hdr(uint8_t *dst_l2addr, unsigned dst_l2addr_len, gnrc_pktsnip_t *pkt, uint8_t flags);
-static void _receive(void);
+static void _receive(gnrc_pktsnip_t *pkt);
 static void _send(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void* args);
 
@@ -56,9 +56,26 @@ static gnrc_pktsnip_t *_create_netif_hdr(uint8_t *dst_l2addr, unsigned dst_l2add
   return pkt;
 }
 
-static void _receive(void)
+static void _receive(gnrc_pktsnip_t *pkt)
 {
+  gnrc_netif_t *netif = NULL;
+  gnrc_pktsnip_t *netif_hdr;
+  assert(pkt != NULL);
 
+  netif_hdr = gnrc_pktsnip_search_type(pkt, GNRC_NETTYPE_NETIF);
+
+  if (netif_hdr != NULL) {
+    netif = gnrc_netif_hdr_get_netif(netif_hdr->data);
+    DEBUG("contact_manager: netif is %s.\n", !netif?"not null": "null");
+  }
+
+  if (pkt->data == NULL) {
+    DEBUG("contact_manager: discovery_packet received is not discovery type, dropping it.\n");
+    gnrc_pktbuf_release(pkt);
+    return;
+  }
+
+  DEBUG("contact_manager: size of discovry packet received is %d and data in it is %s.\n", pkt->size, (char*) pkt->data);
 }
 
 static void _send(gnrc_pktsnip_t *pkt)
@@ -87,7 +104,7 @@ static void _send(gnrc_pktsnip_t *pkt)
     }
     pkt = gnrc_pktbuf_remove_snip(tmp_pkt, tmp_pkt);
   }
-  // TODO: Add destination l2adrr and addr length here instead of NULL and 0.
+  // TODO: Add broadcast destination l2adrr and addr length here instead of NULL and 0.
   if ((pkt = _create_netif_hdr(NULL, 0, pkt, netif_hdr_flags | GNRC_NETIF_HDR_FLAGS_BROADCAST)) == NULL) {
     return ;
   }
@@ -95,6 +112,7 @@ static void _send(gnrc_pktsnip_t *pkt)
 
   if(iface != 0) {
     DEBUG("contact_manager: Sending discovery packet.\n");
+    DEBUG("contact_manager: type of packet before sending it: %d.\n", pkt->next->type);
     gnrc_netapi_send(iface, pkt);
   }
 }
@@ -119,7 +137,7 @@ static void *_event_loop(void *args)
           break;
       case GNRC_NETAPI_MSG_TYPE_RCV:
           DEBUG("contact_manager: GNRC_NETDEV_MSG_TYPE_RCV received\n");
-          _receive();
+          _receive(msg.content.ptr);
           break;
       default:
         DEBUG("contact_manager: Successfully entered contact manager, yayyyyyy!!\n");

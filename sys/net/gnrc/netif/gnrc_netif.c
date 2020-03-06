@@ -1407,7 +1407,7 @@ static void *_gnrc_netif_thread(void *args)
                 break;
             case GNRC_NETAPI_MSG_TYPE_SND:
                 // DEBUG("gnrc_netif: is frame filter enabled : %d.\n",at86rf215_get_framefilter_enabled(dev, 0));
-                DEBUG("gnrc_netif: GNRC_NETDEV_MSG_TYPE_SND received\n");
+                DEBUG("gnrc_netif: GNRC_NETDEV_MSG_TYPE_SND received with packet type: %d\n", ((gnrc_pktsnip_t*)msg.content.ptr)->next->type);
                 res = netif->ops->send(netif, msg.content.ptr);
                 DEBUG("gnrc_netif: Loaded %d number of bytes onto the radio.\n ", res);
                 if (res < 0) {
@@ -1477,6 +1477,7 @@ static void *_gnrc_netif_thread(void *args)
 static void _pass_on_packet(gnrc_pktsnip_t *pkt)
 {
     /* throw away packet if no one is interested */
+    DEBUG("gnrc_netif:Type of packet received is %d, GNRC_NETTYPE_SIXLOWPAN is %d and GNRC_NETTYPE_CONTACT_MANAGER is %d.\n", pkt->type, GNRC_NETTYPE_SIXLOWPAN, GNRC_NETTYPE_CONTACT_MANAGER);
     if (!gnrc_netapi_dispatch_receive(pkt->type, GNRC_NETREG_DEMUX_CTX_ALL, pkt)) {
         DEBUG("gnrc_netif: unable to forward packet of type %i\n", pkt->type);
         gnrc_pktbuf_release(pkt);
@@ -1486,6 +1487,7 @@ static void _pass_on_packet(gnrc_pktsnip_t *pkt)
 
 static void _event_cb(netdev_t *dev, netdev_event_t event)
 {
+    DEBUG("gnrc_netif: Inside _event_cb.\n");
     gnrc_netif_t *netif = (gnrc_netif_t *) dev->context;
 
     if (event == NETDEV_EVENT_ISR) {
@@ -1501,6 +1503,7 @@ static void _event_cb(netdev_t *dev, netdev_event_t event)
         gnrc_pktsnip_t *pkt = NULL;
         switch (event) {
             case NETDEV_EVENT_RX_COMPLETE:
+                DEBUG("gnrc_netif: event raised = NETDEV_EVENT_RX_COMPLETE.\n");
                 pkt = netif->ops->recv(netif);
                 if (pkt) {
                     _pass_on_packet(pkt);
@@ -1508,17 +1511,20 @@ static void _event_cb(netdev_t *dev, netdev_event_t event)
                 break;
 #ifdef MODULE_NETSTATS_L2
             case NETDEV_EVENT_TX_MEDIUM_BUSY:
+                DEBUG("gnrc_netif: event raised = NETDEV_EVENT_TX_MEDIUM_BUSY.\n");
                 /* we are the only ones supposed to touch this variable,
                  * so no acquire necessary */
                 netif->stats.tx_failed++;
                 break;
             case NETDEV_EVENT_TX_COMPLETE:
+                DEBUG("gnrc_netif: event raised = NETDEV_EVENT_TX_COMPLETE.\n");
                 /* we are the only ones supposed to touch this variable,
                  * so no acquire necessary */
                 netif->stats.tx_success++;
                 break;
 #endif
             case NETDEV_EVENT_PDU_CHANGED:
+                DEBUG("gnrc_netif: event raised = NETDEV_EVENT_PDU_CHANGED.\n");
                 gnrc_netif_ipv6_init_mtu(netif);
                 break;
             default:
