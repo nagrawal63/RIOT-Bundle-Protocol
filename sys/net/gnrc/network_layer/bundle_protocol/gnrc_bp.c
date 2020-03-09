@@ -1,13 +1,12 @@
 
 
 #include "kernel_types.h"
-#include "net/gnrc.h"
 #include "thread.h"
 #include "utlist.h"
 
 #include "net/gnrc/netif.h"
 #include "net/gnrc/bp.h"
-#include "net/gnrc/bundle_protocol/bundle.h"
+#include "net/gnrc.h"
 #include "net/gnrc/pktbuf.h"
 #include "net/gnrc/bundle_protocol/config.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
@@ -23,9 +22,9 @@ static char _stack[GNRC_BP_STACK_SIZE +THREAD_EXTRA_STACKSIZE_PRINTF];
 static char _stack[GNRC_BP_STACK_SIZE];
 #endif
 
-static int gnrc_bp_dispatch_receive(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bundle *bundle);
 static void _receive(gnrc_pktsnip_t *pkt);
-static void _send(gnrc_pktsnip_t *pkt);
+static void _send(struct actual_bundle *bundle);
+static void _send_discovery_packet(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void *args);
 
 kernel_pid_t gnrc_bp_init(void)
@@ -46,14 +45,14 @@ kernel_pid_t gnrc_bp_get_pid(void)
     return _pid;
 }
 
-static int gnrc_bp_dispatch_receive(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bundle *bundle)
+int gnrc_bp_dispatch(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bundle *bundle, uint16_t cmd)
 {
   int numof = gnrc_netreg_num(type, demux_ctx);
   if (numof != 0){
     gnrc_netreg_entry_t *sendto = gnrc_netreg_lookup(type, demux_ctx);
     msg_t msg;
     /* set the outgoing message's fields */
-    msg.type = GNRC_NETAPI_MSG_TYPE_RCV;
+    msg.type = cmd;
     msg.content.ptr = (void *)bundle;
     /* send message */
     int ret = msg_try_send(&msg, sendto->target.pid);
@@ -83,7 +82,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
   #ifdef MODULE_GNRC_CONTACT_MANAGER
     if (bundle->primary_block.service_num  == (uint32_t)atoi(CONTACT_MANAGER_SERVICE_NUM)) {
       // gnrc_pktsnip_t *tmp_pkt = gnrc_pktbuf_add(NULL, bundle, sizeof(bundle), GNRC_NETTYPE_CONTACT_MANAGER);
-      if (!gnrc_bp_dispatch_receive(GNRC_NETTYPE_CONTACT_MANAGER, GNRC_NETREG_DEMUX_CTX_ALL, bundle)) {
+      if (!gnrc_bp_dispatch(GNRC_NETTYPE_CONTACT_MANAGER, GNRC_NETREG_DEMUX_CTX_ALL, bundle, GNRC_NETAPI_MSG_TYPE_RCV)) {
         DEBUG("bp: no contact_manager thread found\n");
         delete_bundle(bundle);
       }
@@ -94,10 +93,49 @@ static void _receive(gnrc_pktsnip_t *pkt)
     return ;
 }
 
-static void _send(gnrc_pktsnip_t *pkt)
+static void _send(struct actual_bundle *bundle)
 {
-    DEBUG("bp: Send type: %d\n",pkt->type);
+    (void) bundle;
+    // DEBUG("bp: Send type: %d\n",pkt->type);
+    // nanocbor_encoder_t enc;
+    // nanocbor_encoder_init(&enc, NULL, 0);
+    // bundle_encode(bundle, &enc);
+    // size_t required_size = nanocbor_encoded_len(&enc);
+    // uint8_t *buf = malloc(required_size);
+    // nanocbor_encoder_init(&enc, buf, required_size);
+    // bundle_encode(bundle, &enc);
+    // printf("Encoded bundle: ");
+    // for(int i=0;i<(int)required_size;i++){
+    //   printf("%02x",buf[i]);
+    // }
+    // printf(" at %p\n", bundle);
+    //
+    // gnrc_pktsnip_t *pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
+    // if (pkt == NULL) {
+    //   printf("unable to copy data to discovery packet buffer.\n");
+    //   delete_bundle(bundle1);
+    //   free(buf);
+    //   return ;
+    // }
+    //
+    // if (netif != NULL) {
+    //     gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
+    //     printf("netif hdr data is %s.\n",(char *)netif_hdr->data);
+    //     gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
+    //     LL_PREPEND(pkt, netif_hdr);
+    // }
     return ;
+}
+
+static void _send_discovery_packet(gnrc_pktsnip_t *pkt)
+{
+  gnrc_netif_t *netif = NULL;
+  netif = gnrc_netif_hdr_get_netif(pkt->data);
+
+  if (netif->pid != 0) {
+    DEBUG("bp: Sending discovery packet to process with pid %d.\n", netif->pid);
+    gnrc_netapi_send(netif->pid, pkt);
+  }
 }
 
 static void *_event_loop(void *args)
@@ -116,6 +154,10 @@ static void *_event_loop(void *args)
     switch(msg.type){
       case GNRC_NETAPI_MSG_TYPE_SND:
           DEBUG("bp: GNRC_NETDEV_MSG_TYPE_SND received\n");
+          if(strcmp(thread_get(msg.sender_pid)->name, "contact_manager") == 0) {
+            _send_discovery_packet(msg.content.ptr);
+            break;
+          }
           _send(msg.content.ptr);
           break;
       case GNRC_NETAPI_MSG_TYPE_RCV:

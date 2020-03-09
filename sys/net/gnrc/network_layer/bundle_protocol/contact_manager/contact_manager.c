@@ -7,7 +7,6 @@
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/gnrc.h"
-#include "net/gnrc/netif.h"
 
 #define ENABLE_DEBUG  (1)
 #include "debug.h"
@@ -121,7 +120,9 @@ static void _send(gnrc_pktsnip_t *pkt)
     }
     pkt = gnrc_pktbuf_remove_snip(tmp_pkt, tmp_pkt);
   }
-  // TODO: Add broadcast destination l2adrr and addr length here instead of NULL and 0.
+  /* TODO: Add broadcast destination l2adrr and addr length here instead of NULL and 0.
+   * This happens automatically inside gnrc_netif.c, so not needed
+   */
   if ((pkt = _create_netif_hdr(NULL, 0, pkt, netif_hdr_flags | GNRC_NETIF_HDR_FLAGS_BROADCAST)) == NULL) {
     return ;
   }
@@ -130,7 +131,10 @@ static void _send(gnrc_pktsnip_t *pkt)
   if(iface != 0) {
     DEBUG("contact_manager: Sending discovery packet.\n");
     DEBUG("contact_manager: type of packet before sending it: %d.\n", pkt->next->type);
-    gnrc_netapi_send(iface, pkt);
+    /*Setting netif to old value */
+    gnrc_netif_hdr_set_netif(pkt->data, netif);
+    gnrc_netapi_dispatch_send(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, pkt);
+    // gnrc_netapi_send(iface, pkt);
   }
 }
 

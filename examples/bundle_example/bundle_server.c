@@ -26,6 +26,7 @@
 #include "net/gnrc/netif.h"
 #include "net/gnrc/netif/hdr.h"
 #include "net/gnrc/pktdump.h"
+#include "net/gnrc/bp.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/netdev/ieee802154.h"
@@ -65,7 +66,7 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
     printf("Error creating payload flag.\n");
     return;
   }
-  print_u64_dec(payload_flag);
+  // print_u64_dec(payload_flag);
   // struct actual_bundle *bundle1, *bundle2, *bundle3 ;
   struct actual_bundle *bundle1;
   if((bundle1= create_bundle()) == NULL){
@@ -74,9 +75,9 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
   }
   print_bundle_storage();
   fill_bundle(bundle1, 7, IPN, dtn_dst, NULL, 1, NOCRC, "1");
-  printf("primary block of bundle filled.\n");
+  // printf("primary block of bundle filled.\n");
   bundle_add_block(bundle1, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);
-  printf("Adding block completed.\n");
+  // printf("Adding block completed.\n");
   // printf("bundle: Set version to %d.\n",bundle1->primary_block.version);
   print_bundle(bundle1);
   // if((bundle2 = create_bundle()) == NULL){
@@ -108,19 +109,28 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
   }
   printf(" at %p\n", bundle1);
 
-  // struct actual_bundle *bundle  = create_bundle();
-  // print_bundle_storage();
-  // bundle_decode(bundle, buf, required_size);
-  // printf("*******************printing decoded bundle **************************.\n");
-  // print_bundle(bundle);
-  // gnrc_pktsnip_t *payload = gnrc_pktbuf_add(NULL, buf, required_size, GNRC_NETTYPE_BP);
+  gnrc_pktsnip_t *pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
+  if (pkt == NULL) {
+    printf("unable to copy data to discovery packet buffer.\n");
+    delete_bundle(bundle1);
+    free(buf);
+    return ;
+  }
 
-  // if (netif != NULL) {
-  //         gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
-  //         printf("netif hdr data is %s.\n",(char *)netif_hdr->data);
-  //         gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
-  //         LL_PREPEND(payload, netif_hdr);
-  //     }
+  if (netif != NULL) {
+      gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
+      printf("netif hdr data is %s.\n",(char *)netif_hdr->data);
+      gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
+      LL_PREPEND(pkt, netif_hdr);
+  }
+
+  if(!gnrc_netapi_dispatch_send(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, pkt)) {
+    printf("Unable to find BP thread.\n");
+    gnrc_pktbuf_release(pkt);
+    return ;
+  }
+
+
   //Send bundle
   // netdev_t *dev = netif->dev;
   // uint8_t mhr[IEEE802154_MAX_HDR_LEN] = {0};

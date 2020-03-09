@@ -7,6 +7,7 @@
 #include "kernel_types.h"
 
 #include "net/gnrc/bundle_protocol/config.h"
+#include "net/gnrc/bundle_protocol/bundle.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,6 +25,8 @@ extern "C" {
  * @return  -EOVERFLOW, if there are too many threads running already in general
  */
 kernel_pid_t gnrc_bp_init(void);
+
+int gnrc_bp_dispatch(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bundle *bundle, uint16_t cmd);
 
 #ifdef __cplusplus
 }
