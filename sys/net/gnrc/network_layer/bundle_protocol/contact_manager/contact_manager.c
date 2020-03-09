@@ -6,6 +6,7 @@
 #include "net/gnrc/bundle_protocol/contact_manager.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
+#include "net/gnrc/netif/hdr.h"
 #include "net/gnrc.h"
 
 #define ENABLE_DEBUG  (1)
@@ -64,7 +65,7 @@ static gnrc_pktsnip_t *_create_netif_hdr(uint8_t *dst_l2addr, unsigned dst_l2add
 static void _receive(struct actual_bundle *bundle)
 {
   DEBUG("contact_manager: Received bundle with version: %d.\n", bundle->primary_block.version);
-
+  char addr_str[GNRC_NETIF_HDR_L2ADDR_PRINT_LEN];
   struct bundle_canonical_block_t *payload_block = bundle_get_payload_block(bundle);
   if (payload_block == NULL) {
     DEBUG("contact_manager: Cannot extract payload block from received packet.\n");
@@ -81,7 +82,7 @@ static void _receive(struct actual_bundle *bundle)
   }
   memcpy(neighbor->l2addr, payload_block->block_data, payload_block->data_len);
   neighbor->l2addr_len = payload_block->data_len;
-
+  DEBUG("contact_manager : Neighbor addr inside receive: %s.\n", gnrc_netif_addr_to_str(neighbor->l2addr, neighbor->l2addr_len, addr_str));
   /* Adding neighbor in front of neighbor list if not present in list*/
   struct neighbor_t *temp;
   LL_SEARCH(head_of_neighbors, temp, neighbor, comparator);
@@ -171,24 +172,35 @@ static void *_event_loop(void *args)
 static int comparator (struct neighbor_t *neighbor, struct neighbor_t *compare_to_neighbor)
 {
   int res = -1;
+  char addr_str[GNRC_NETIF_HDR_L2ADDR_PRINT_LEN];
   if (neighbor->endpoint_scheme == compare_to_neighbor->endpoint_scheme) {
     if (neighbor->endpoint_scheme == IPN) {
       if(neighbor->endpoint_num == compare_to_neighbor->endpoint_num) {
-        res = strcmp((char*)neighbor->l2addr, (char*)compare_to_neighbor->l2addr);
+        if(neighbor-> l2addr_len == compare_to_neighbor->l2addr_len && memcmp(neighbor->l2addr, compare_to_neighbor->l2addr, neighbor->l2addr_len) == 0){
+          DEBUG("contact_manager : Neighbor addr: %s.\n", gnrc_netif_addr_to_str(neighbor->l2addr, neighbor->l2addr_len, addr_str));
+          DEBUG("contact_manager : compare to neighbor addr: %s.\n", gnrc_netif_addr_to_str(compare_to_neighbor->l2addr, compare_to_neighbor->l2addr_len, addr_str));
+          return 0;
+        }
       }
     }
-    else if (neighbor->endpoint_scheme == DTN) {
-      return strcmp((char*)neighbor->eid, (char*)compare_to_neighbor->eid) && strcmp((char*)neighbor->l2addr, (char*)compare_to_neighbor->l2addr);
+    else if (neighbor->endpoint_scheme == DTN ) {
+      if(strcmp((char*)neighbor->eid, (char*)compare_to_neighbor->eid) == 0){
+        if(neighbor-> l2addr_len == compare_to_neighbor->l2addr_len && memcmp(neighbor->l2addr, compare_to_neighbor->l2addr, neighbor->l2addr_len) == 0){
+          return 0;
+        }
+      }
     }
   }
   return res;
 }
 
+
 void print_neighbor_list(void) {
+  char addr_str[GNRC_NETIF_HDR_L2ADDR_PRINT_LEN];
   struct neighbor_t *temp;
   DEBUG("contact_manager: Printing neighbor list: ");
   LL_FOREACH(head_of_neighbors, temp) {
-    DEBUG("(%lu, %s )-> ", temp->endpoint_num, temp->l2addr);
+    DEBUG("(%lu, %s )-> ", temp->endpoint_num, gnrc_netif_addr_to_str(temp->l2addr, temp->l2addr_len, addr_str));
   }
   DEBUG(".\n");
 }

@@ -1,6 +1,7 @@
 
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
+#include "od.h"
 
 #define ENABLE_DEBUG (1)
 #include "debug.h"
@@ -449,9 +450,16 @@ static void decode_canonical_block_element(nanocbor_value_t* decoder, struct bun
       case BLOCK_DATA:
       {
         size_t len;
-        nanocbor_get_bstr(decoder, (const uint8_t**)&block->block_data, &len);
-        block->data_len = len;
-        DEBUG("bundle: Decoded bundle's data is %s with len %d.\n", block->block_data, block->data_len);
+        const uint8_t *buf = NULL;
+        if(nanocbor_get_bstr(decoder, &buf, &len) >= 0 && buf) {
+          block->data_len = len;
+          memcpy(block->block_data, buf, len);
+        }
+        // DEBUG("bundle: decoder value inside decode_canonical_block_element is %02x.\n", *decoder->cur);
+        // nanocbor_get_bstr(decoder, (const uint8_t**)&block->block_data, &len);
+        // block->data_len = len;
+        // DEBUG("bundle: Decoded bundle's data is %s with len %d.\n", block->block_data, block->data_len);
+        // od_hex_dump(block->block_data, block->data_len, OD_WIDTH_DEFAULT);
       }
       break;
       case CRC_CANONICAL:
@@ -517,6 +525,7 @@ int bundle_decode(struct actual_bundle* bundle, uint8_t *buffer, size_t buf_len)
     decode_canonical_block_element(&arr, block, BLOCK_NUMBER);
     decode_canonical_block_element(&arr, block, FLAGS_CANONICAL);
     decode_canonical_block_element(&arr, block, CRC_TYPE_CANONICAL);
+    DEBUG("bundle: Inside decoding of canonical block before getting blockdata and currently scanning %02x.\n", *arr.cur);
     decode_canonical_block_element(&arr, block, BLOCK_DATA);
     decode_canonical_block_element(&arr, block, CRC_CANONICAL);
     nanocbor_leave_container(&decoder, &arr);

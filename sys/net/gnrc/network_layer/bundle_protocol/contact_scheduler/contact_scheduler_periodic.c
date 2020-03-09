@@ -8,9 +8,11 @@
 #include "net/gnrc/pkt.h"
 #include "net/gnrc/netif/internal.h"
 #include "net/gnrc.h"
+#include "net/gnrc/netif/hdr.h"
 
 #define ENABLE_DEBUG  (1)
 #include "debug.h"
+#include "od.h"
 
 #define DISCOVERY_SEND_DATA 1
 
@@ -64,13 +66,14 @@ int send(char *addr_str, int data, int iface)
   uint8_t *payload_data, *buf_data;
   // uint8_t *buf_data;
   uint64_t payload_flag;
+  char hdr_addr_str[GNRC_NETIF_HDR_L2ADDR_PRINT_LEN];
 
   netif = gnrc_netif_get_by_pid(iface);
 
-  data_len = netif->l2addr_len + 1;
+  data_len = netif->l2addr_len;
   payload_data = (uint8_t*)malloc(data_len);
   memcpy(payload_data, netif->l2addr, data_len);
-  DEBUG("contact_scheduler: payload_data -> %s with length %u.\n", payload_data, data_len);
+  DEBUG("contact_scheduler: payload_data -> %s with length %u.\n", gnrc_netif_addr_to_str(payload_data,data_len, hdr_addr_str), data_len);
   if (calculate_payload_flag(&payload_flag, false) < 0) {
     DEBUG("contact_scheduler: Error making discovery payload flag.\n");
     return ERROR;
@@ -85,7 +88,8 @@ int send(char *addr_str, int data, int iface)
   bundle_add_block(bundle, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);
   print_bundle(bundle);
 
-  DEBUG("contact_scheduler: payload_data = %s.\n", bundle->other_blocks->block_data);
+  DEBUG("contact_scheduler: payload_data =");
+  od_hex_dump(bundle->other_blocks[0].block_data, bundle->other_blocks[0].data_len, OD_WIDTH_DEFAULT);
   buf_data = _encode_discovery_bundle(bundle, &size);
   if(buf_data == NULL) {
     DEBUG("contact_scheduler: Unable to encode bundle.\n");

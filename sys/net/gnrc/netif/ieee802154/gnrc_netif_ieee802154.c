@@ -272,6 +272,8 @@ static int _send(gnrc_netif_t *netif, gnrc_pktsnip_t *pkt)
     else {
         src_len = netif->l2addr_len;
         src = netif->l2addr;
+        char addr_str[GNRC_NETIF_HDR_L2ADDR_PRINT_LEN];
+        DEBUG("_send_ieee802154: src address %s.\n", gnrc_netif_addr_to_str(src, src_len, addr_str));
         DEBUG("_send_ieee802154: src: %s, src_len: %u.\n", src, src_len);
     }
     /* fill MAC header, seq should be set by device */
