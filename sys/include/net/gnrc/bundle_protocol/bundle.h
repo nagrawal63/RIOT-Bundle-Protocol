@@ -37,6 +37,8 @@
 #define FRAGMENT_IDENTIFICATION_MASK 0x0000000000000001
 
 #define BLOCK_DATA_BUF_SIZE 100
+
+#define MAX_NUM_OF_BLOCKS 3
 //#define MAX_ENDPOINT_SIZE 10
 
 //Primary block defines
@@ -106,20 +108,22 @@ struct bundle_canonical_block_t{
   uint8_t crc_type;
   uint8_t block_data[BLOCK_DATA_BUF_SIZE];
   uint32_t crc;
+  size_t data_len;
   struct bundle_canonical_block_t* next;
 };
 
 struct actual_bundle{
   struct bundle_primary_block_t primary_block;
-  struct bundle_canonical_block_t *other_blocks;
+  struct bundle_canonical_block_t other_blocks[MAX_NUM_OF_BLOCKS];
   int num_of_blocks;
 };
 
-void insert_block_in_bundle(struct actual_bundle* bundle, struct bundle_canonical_block_t* block);
+// void insert_block_in_bundle(struct actual_bundle* bundle, struct bundle_canonical_block_t* block);
 bool is_same_bundle(struct actual_bundle* current_bundle, struct actual_bundle* compare_to_bundle);
 uint16_t calculate_crc_16(uint8_t type);
 uint32_t calculate_crc_32(uint8_t type);
 void calculate_primary_flag(uint64_t *flag, bool is_fragment, bool dont_fragment);
+int calculate_payload_flag(uint64_t *flag, bool replicate_block);
 
 struct actual_bundle* create_bundle(void);
 void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dest_eid, char* report_eid, int lifetime, int crc_type, char* service_num);
@@ -131,7 +135,7 @@ struct bundle_canonical_block_t* bundle_get_payload_block(struct actual_bundle* 
 struct bundle_canonical_block_t* get_block_by_type(struct actual_bundle* bundle, uint8_t block_type);
 
 //main api to be used to add blocks to bundle
-int bundle_add_block(struct actual_bundle* bundle, uint8_t type, uint8_t flags, uint8_t *data, uint8_t crc_type, size_t data_len);
+int bundle_add_block(struct actual_bundle* bundle, uint8_t type, uint64_t flags, uint8_t *data, uint8_t crc_type, size_t data_len);
 uint8_t bundle_get_attribute(struct actual_bundle* bundle, uint8_t type, void* val);
 uint8_t bundle_set_attribute(struct actual_bundle* bundle, uint8_t type, void* val);
 

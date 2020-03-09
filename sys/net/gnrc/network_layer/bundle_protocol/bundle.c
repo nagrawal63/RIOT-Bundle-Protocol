@@ -10,19 +10,37 @@ static bool is_fragment_bundle(struct actual_bundle* bundle);
 static void decode_primary_block_element(nanocbor_value_t *decoder, struct actual_bundle* bundle, uint8_t element);
 static void decode_canonical_block_element(nanocbor_value_t* decoder, struct bundle_canonical_block_t* block, uint8_t element);
 // static void insert_block_in_bundle(struct actual_bundle* bundle, struct bundle_canonical_block_t* block);
+static void print_canonical_block_list(struct actual_bundle *bundle) ;
 
-void insert_block_in_bundle(struct actual_bundle* bundle, struct bundle_canonical_block_t* block)
-{
-  struct bundle_canonical_block_t* temp = bundle->other_blocks;
-  if(temp == NULL){
-    bundle->other_blocks= block;
-    return ;
+// void insert_block_in_bundle(struct actual_bundle* bundle, struct bundle_canonical_block_t* block)
+// {
+//   DEBUG("bundle: Inserting canonical block of type %d into bundle.\n", block->type);
+//   struct bundle_canonical_block_t* temp = bundle->other_blocks;
+//   if(temp == NULL){
+//     DEBUG("bundle: temp is NULL");
+//     bundle->other_blocks = block;
+//     DEBUG("bundle: block attached at head.\n");
+//     print_canonical_block_list(bundle->other_blocks);
+//     return ;
+//   }
+//   while (temp->next != NULL) {
+//       temp = temp->next;
+//   }
+//   temp->next = block;
+//   // block->next = NULL;
+//   return ;
+// }
+
+static void print_canonical_block_list(struct actual_bundle *bundle) {
+  struct bundle_canonical_block_t *temp = bundle->other_blocks;
+  int i = 0;
+  DEBUG("Bundle: Block list ==>>");
+  while (i < bundle->num_of_blocks) {
+    temp = &bundle->other_blocks[i];
+    DEBUG("%d->", temp->type);
+    i++;
   }
-  while(temp->next!=NULL){
-      temp = temp->next;
-  }
-  temp->next = block;
-  block->next = NULL;
+  DEBUG(".\n");
   return ;
 }
 
@@ -211,32 +229,34 @@ int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc)
 
       nanocbor_fmt_uint(enc,bundle->primary_block.crc);
     }
-
+    DEBUG("bundle: Trying to encode canonical blocks.\n");
     //encoding canonical blocks
     struct bundle_canonical_block_t* tempPtr = bundle->other_blocks;
-    while(tempPtr != NULL){
-      if(tempPtr->crc_type != NOCRC){
+    int i = 0;
+    while(i < bundle->num_of_blocks){
+      DEBUG("bundle: Inserting canonical block.\n");
+      if(tempPtr[i].crc_type != NOCRC){
         nanocbor_fmt_array(enc,6);
-        nanocbor_fmt_int(enc,tempPtr->type);
-        nanocbor_fmt_int(enc,tempPtr->block_number);
-        nanocbor_fmt_int(enc,tempPtr->flags);
-        nanocbor_fmt_int(enc,tempPtr->crc_type);
+        nanocbor_fmt_int(enc,tempPtr[i].type);
+        nanocbor_fmt_int(enc,tempPtr[i].block_number);
+        nanocbor_fmt_int(enc,tempPtr[i].flags);
+        nanocbor_fmt_int(enc,tempPtr[i].crc_type);
         //TODO: encoded as per the block specification (which is conflicting
         // with the one mentioned in the block specification)
-        nanocbor_put_bstr(enc,tempPtr->block_data, sizeof(tempPtr->block_data));
-        nanocbor_fmt_int(enc, tempPtr->crc);
+        nanocbor_put_bstr(enc,tempPtr[i].block_data, tempPtr[i].data_len);
+        nanocbor_fmt_int(enc, tempPtr[i].crc);
       }
       else{
         nanocbor_fmt_array(enc,5);
-        nanocbor_fmt_int(enc,tempPtr->type);
-        nanocbor_fmt_int(enc,tempPtr->block_number);
-        nanocbor_fmt_int(enc,tempPtr->flags);
-        nanocbor_fmt_int(enc,tempPtr->crc_type);
+        nanocbor_fmt_int(enc,tempPtr[i].type);
+        nanocbor_fmt_int(enc,tempPtr[i].block_number);
+        nanocbor_fmt_int(enc,tempPtr[i].flags);
+        nanocbor_fmt_int(enc,tempPtr[i].crc_type);
         //TODO: encoded as per the block specification (which is conflicting
         // with the one mentioned in the block specification)
-        nanocbor_put_bstr(enc,tempPtr->block_data, sizeof(tempPtr->block_data));
+        nanocbor_put_bstr(enc,tempPtr[i].block_data, tempPtr[i].data_len);
       }
-      tempPtr = tempPtr->next;
+      i++;
     }
     nanocbor_fmt_end_indefinite(enc);
     return 1;
@@ -430,6 +450,8 @@ static void decode_canonical_block_element(nanocbor_value_t* decoder, struct bun
       {
         size_t len;
         nanocbor_get_bstr(decoder, (const uint8_t**)&block->block_data, &len);
+        block->data_len = len;
+        DEBUG("bundle: Decoded bundle's data is %s with len %d.\n", block->block_data, block->data_len);
       }
       break;
       case CRC_CANONICAL:
@@ -485,10 +507,10 @@ int bundle_decode(struct actual_bundle* bundle, uint8_t *buffer, size_t buf_len)
   nanocbor_leave_container(&decoder, &arr);
   // DEBUG("value of src num: %lu.\n", bundle->primary_block.src_num);
   //decoding and parsing other canonical blocks
-  while(!(*decoder.cur == 0xFF && *(decoder.cur+1) == 0x00)){
-    // DEBUG("bundle: Inside decoding of canonical block and currently scanning %02x.\n", *decoder.cur);
+  while(!(*decoder.cur == 0xFF && *(decoder.cur+1) == 0x00) && bundle->num_of_blocks < MAX_NUM_OF_BLOCKS){
+    DEBUG("bundle: Inside decoding of canonical block and currently scanning %02x.\n", *decoder.cur);
     //TODO: Think of solution to prevent too much use of malloc everywhere(so that keeping track of memory becomes easier)
-    struct bundle_canonical_block_t* block = (struct bundle_canonical_block_t*) malloc(sizeof(struct bundle_canonical_block_t));
+    struct bundle_canonical_block_t* block = &bundle->other_blocks[bundle->num_of_blocks];
     nanocbor_value_t arr;
     nanocbor_enter_array(&decoder, &arr);
     decode_canonical_block_element(&arr, block, TYPE);
@@ -498,10 +520,11 @@ int bundle_decode(struct actual_bundle* bundle, uint8_t *buffer, size_t buf_len)
     decode_canonical_block_element(&arr, block, BLOCK_DATA);
     decode_canonical_block_element(&arr, block, CRC_CANONICAL);
     nanocbor_leave_container(&decoder, &arr);
-    insert_block_in_bundle(bundle, block);
+    // insert_block_in_bundle(bundle, block);
     bundle->num_of_blocks++;
+    DEBUG("bundle: Check for canonical block while decoding is %d.\n", !(*decoder.cur == 0xFF && *(decoder.cur+1) == 0x00)?1:0);
   }
-  DEBUG("bundle: Finished decoding bundle.\n");
+  DEBUG("bundle: Finished decoding bundle with number of canonical blocks = %d.\n", bundle->num_of_blocks);
   return 1;
 }
 
@@ -563,6 +586,14 @@ void calculate_primary_flag(uint64_t *flag, bool is_fragment, bool dont_fragment
   return ;
 }
 
+//TODO: Implement block flag thing
+int calculate_payload_flag(uint64_t *flag, bool replicate_block)
+{
+  (void) replicate_block;
+  *flag = 0;
+  return 0;
+}
+
 struct actual_bundle* create_bundle(void)
 {
   struct actual_bundle* bundle = get_space_for_bundle();
@@ -571,7 +602,7 @@ struct actual_bundle* create_bundle(void)
     return NULL;
   }
   bundle->num_of_blocks=0;
-  bundle->other_blocks=NULL;
+  // bundle->other_blocks=NULL;
   return bundle;
 }
 
@@ -729,42 +760,54 @@ struct bundle_canonical_block_t* bundle_get_payload_block(struct actual_bundle* 
 struct bundle_canonical_block_t* get_block_by_type(struct actual_bundle* bundle, uint8_t block_type)
 {
   struct bundle_canonical_block_t* temp = bundle->other_blocks;
+  int i = 0;
   while(temp != NULL){
+    temp = &bundle->other_blocks[i];
     if(temp->type == block_type){
       return temp;
     }
-    temp = temp->next;
+    i++;
   }
   return NULL;
 }
 
-int bundle_add_block(struct actual_bundle* bundle, uint8_t type, uint8_t flags, uint8_t *data, uint8_t crc_type, size_t data_len)
+int bundle_add_block(struct actual_bundle* bundle, uint8_t type, uint64_t flags, uint8_t *data, uint8_t crc_type, size_t data_len)
 {
-  struct bundle_canonical_block_t block;
-  block.type = type;
-  block.flags = flags;
-  block.block_number = get_next_block_number();
-  block.crc_type = crc_type;
+  if (bundle->num_of_blocks == MAX_NUM_OF_BLOCKS) {
+    DEBUG("bundle: Cannot add more blocks to bundle.\n");
+    return ERROR;
+  }
+  struct bundle_canonical_block_t *block = &bundle->other_blocks[bundle->num_of_blocks];
+  block->type = type;
+  block->flags = flags;
+  block->block_number = get_next_block_number();
+  block->crc_type = crc_type;
   switch(crc_type){
     case NOCRC:
       {
-        block.crc=0;
+        block->crc=0;
       }
       break;
     case CRC_16:
       {
-        block.crc= calculate_crc_16(BUNDLE_BLOCK_TYPE_CANONICAL);
+        block->crc= calculate_crc_16(BUNDLE_BLOCK_TYPE_CANONICAL);
       }
       break;
     case CRC_32:
       {
-        block.crc = calculate_crc_32(BUNDLE_BLOCK_TYPE_CANONICAL);
+        block->crc = calculate_crc_32(BUNDLE_BLOCK_TYPE_CANONICAL);
       }
       break;
   }
-  memcpy(block.block_data, data, data_len);
-  block.next = NULL;
-  insert_block_in_bundle(bundle, &block);
+  DEBUG("bundle: Inside bundle_add_block before copying block data.\n");
+  memcpy(block->block_data, data, data_len);
+  block->data_len = data_len;
+  // block.next = NULL;
+  DEBUG("bundle: Data copying inside bundle over.\n");
+  // insert_block_in_bundle(bundle, &block);
+  bundle->num_of_blocks++;
+  DEBUG("Block inserted.\n");
+  print_canonical_block_list(bundle);
   return 1;
 }
 
@@ -977,6 +1020,14 @@ void print_bundle(struct actual_bundle* bundle)
   DEBUG("Bundle primary block fragment_offset: %ld\n", bundle->primary_block.fragment_offset);
   DEBUG("Bundle primary block total_application_data_length: %ld\n", bundle->primary_block.total_application_data_length);
   DEBUG("Bundle primary block crc: %ld\n", bundle->primary_block.crc);
+
+  struct bundle_canonical_block_t *temp = bundle->other_blocks;
+  int i = 0;
+  while (i < bundle->num_of_blocks) {
+    DEBUG("Bundle canonical block of type: %d with data :%s.\n", temp[i].type, temp[i].block_data);
+    i++;
+  }
+  DEBUG("Finished printing bundle.\n");
   return ;
 }
 

@@ -44,8 +44,28 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
   (void) port_str;
   (void) data;
 
+  uint64_t payload_flag;
+  uint8_t *payload_data;
+  size_t data_len;
 
+  int iface = 9;
+  gnrc_netif_t *netif = NULL;
+  netif = gnrc_netif_get_by_pid(iface);
 
+  data_len = netif->l2addr_len + 1;
+  payload_data = (uint8_t*)malloc(data_len);
+  payload_data = netif->l2addr;
+  // payload_data[data_len] = '\0';
+  printf("Data to be added in the block is %s with size %d and addr len is %d.\n", payload_data, data_len, netif->l2addr_len);
+  for(int i=0;i<(int)data_len;i++){
+    printf("%02x",payload_data[i]);
+  }
+  printf(".\n");
+  if (calculate_payload_flag(&payload_flag, false) < 0) {
+    printf("Error creating payload flag.\n");
+    return;
+  }
+  print_u64_dec(payload_flag);
   // struct actual_bundle *bundle1, *bundle2, *bundle3 ;
   struct actual_bundle *bundle1;
   if((bundle1= create_bundle()) == NULL){
@@ -54,6 +74,9 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
   }
   print_bundle_storage();
   fill_bundle(bundle1, 7, IPN, dtn_dst, NULL, 1, NOCRC, "1");
+  printf("primary block of bundle filled.\n");
+  bundle_add_block(bundle1, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);
+  printf("Adding block completed.\n");
   // printf("bundle: Set version to %d.\n",bundle1->primary_block.version);
   print_bundle(bundle1);
   // if((bundle2 = create_bundle()) == NULL){
@@ -85,15 +108,13 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
   }
   printf(" at %p\n", bundle1);
 
-  struct actual_bundle *bundle  = create_bundle();
-  print_bundle_storage();
-  bundle_decode(bundle, buf, required_size);
-  printf("*******************printing decoded bundle **************************.\n");
-  print_bundle(bundle);
+  // struct actual_bundle *bundle  = create_bundle();
+  // print_bundle_storage();
+  // bundle_decode(bundle, buf, required_size);
+  // printf("*******************printing decoded bundle **************************.\n");
+  // print_bundle(bundle);
   // gnrc_pktsnip_t *payload = gnrc_pktbuf_add(NULL, buf, required_size, GNRC_NETTYPE_BP);
-  // int iface = 9;
-  // gnrc_netif_t *netif = NULL;
-  // netif = gnrc_netif_get_by_pid(iface);
+
   // if (netif != NULL) {
   //         gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
   //         printf("netif hdr data is %s.\n",(char *)netif_hdr->data);

@@ -23,6 +23,7 @@ static char _stack[GNRC_BP_STACK_SIZE +THREAD_EXTRA_STACKSIZE_PRINTF];
 static char _stack[GNRC_BP_STACK_SIZE];
 #endif
 
+static int gnrc_bp_dispatch_receive(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bundle *bundle);
 static void _receive(gnrc_pktsnip_t *pkt);
 static void _send(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void *args);
@@ -45,6 +46,26 @@ kernel_pid_t gnrc_bp_get_pid(void)
     return _pid;
 }
 
+static int gnrc_bp_dispatch_receive(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bundle *bundle)
+{
+  int numof = gnrc_netreg_num(type, demux_ctx);
+  if (numof != 0){
+    gnrc_netreg_entry_t *sendto = gnrc_netreg_lookup(type, demux_ctx);
+    msg_t msg;
+    /* set the outgoing message's fields */
+    msg.type = GNRC_NETAPI_MSG_TYPE_RCV;
+    msg.content.ptr = (void *)bundle;
+    /* send message */
+    int ret = msg_try_send(&msg, sendto->target.pid);
+    if (ret < 1) {
+        DEBUG("gnrc_bp: dropped message to %" PRIkernel_pid " (%s)\n", sendto->target.pid,
+              (ret == 0) ? "receiver queue is full" : "invalid receiver");
+    }
+    return ret;
+  }
+  return ERROR;
+}
+
 static void _receive(gnrc_pktsnip_t *pkt)
 {
     DEBUG("bp: Receive type: %d with length: %d and data: %s\n",pkt->type, pkt->size, (uint8_t*)pkt->data);
@@ -58,13 +79,15 @@ static void _receive(gnrc_pktsnip_t *pkt)
     bundle_decode(bundle, pkt->data, pkt->size);
     DEBUG("bp: Printing received packet!!!!!!!!!!!!!!!!!!!!.\n");
     print_bundle(bundle);
-
+    DEBUG("bp: will send packet to upper layer.\n");
   #ifdef MODULE_GNRC_CONTACT_MANAGER
     if (bundle->primary_block.service_num  == (uint32_t)atoi(CONTACT_MANAGER_SERVICE_NUM)) {
-        if (!gnrc_netapi_dispatch_receive(GNRC_NETTYPE_CONTACT_MANAGER, GNRC_NETREG_DEMUX_CTX_ALL, pkt)) {
-          DEBUG("bp: no contact_manager thread found\n");
-          delete_bundle(bundle);
-        }
+      // gnrc_pktsnip_t *tmp_pkt = gnrc_pktbuf_add(NULL, bundle, sizeof(bundle), GNRC_NETTYPE_CONTACT_MANAGER);
+      if (!gnrc_bp_dispatch_receive(GNRC_NETTYPE_CONTACT_MANAGER, GNRC_NETREG_DEMUX_CTX_ALL, bundle)) {
+        DEBUG("bp: no contact_manager thread found\n");
+        delete_bundle(bundle);
+      }
+      gnrc_pktbuf_release(pkt);
     }
   #endif
 

@@ -13,7 +13,9 @@ extern "C" {
 //Don't implement linked list stuff for this. Rather directly use
 //inbuilt LL stuff of RIOT
 struct neighbor_t{
-  char* eid; // Neighbor's bp addr
+  uint8_t endpoint_scheme;
+  uint32_t endpoint_num;
+  uint8_t *eid;
   uint8_t l2addr [GNRC_IPV6_NIB_L2ADDR_MAX_LEN];
   uint8_t 	l2addr_len;
   struct neighbor_t *next;
@@ -31,6 +33,7 @@ struct neighbor_t{
  * @return  -EOVERFLOW, if there are too many threads running already in general
  */
 kernel_pid_t gnrc_contact_manager_init(void);
+void print_neighbor_list(void);
 
 #ifdef __cplusplus
 }

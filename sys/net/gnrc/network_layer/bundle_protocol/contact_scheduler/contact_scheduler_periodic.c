@@ -38,12 +38,14 @@ kernel_pid_t gnrc_contact_scheduler_periodic_init(void)
   DEBUG("contact_scheduler: Thread created with pid: %d.\n", _pid);
   return _pid;
 }
-
+//
 static uint8_t *_encode_discovery_bundle(struct actual_bundle *bundle, size_t *required_size)
 {
   nanocbor_encoder_t enc;
   nanocbor_encoder_init(&enc, NULL, 0);
+  DEBUG("Will try to encode bundle for the first time.\n");
   bundle_encode(bundle, &enc);
+  DEBUG("contact_scheduler: space required to encode this discovery bundle: %u.\n", (uint8_t)*required_size);
   *required_size = nanocbor_encoded_len(&enc);
   uint8_t *buf = malloc(*required_size);
   nanocbor_encoder_init(&enc, buf, *required_size);
@@ -57,7 +59,22 @@ int send(char *addr_str, int data, int iface)
   (void)data;
   gnrc_pktsnip_t *discovery_packet;
   gnrc_netif_t *netif = NULL;
-  size_t size = 0;
+  size_t size = 0, data_len;
+  // size_t size = 0;
+  uint8_t *payload_data, *buf_data;
+  // uint8_t *buf_data;
+  uint64_t payload_flag;
+
+  netif = gnrc_netif_get_by_pid(iface);
+
+  data_len = netif->l2addr_len + 1;
+  payload_data = (uint8_t*)malloc(data_len);
+  memcpy(payload_data, netif->l2addr, data_len);
+  DEBUG("contact_scheduler: payload_data -> %s with length %u.\n", payload_data, data_len);
+  if (calculate_payload_flag(&payload_flag, false) < 0) {
+    DEBUG("contact_scheduler: Error making discovery payload flag.\n");
+    return ERROR;
+  }
 
   struct actual_bundle *bundle = create_bundle();
   if (bundle == NULL) {
@@ -65,8 +82,11 @@ int send(char *addr_str, int data, int iface)
     return ERROR;
   }
   fill_bundle(bundle, 7, IPN, BROADCAST_EID, NULL, 1, NOCRC, CONTACT_MANAGER_SERVICE_NUM);
+  bundle_add_block(bundle, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);
   print_bundle(bundle);
-  uint8_t *buf_data = _encode_discovery_bundle(bundle, &size);
+
+  DEBUG("contact_scheduler: payload_data = %s.\n", bundle->other_blocks->block_data);
+  buf_data = _encode_discovery_bundle(bundle, &size);
   if(buf_data == NULL) {
     DEBUG("contact_scheduler: Unable to encode bundle.\n");
     delete_bundle(bundle);
@@ -84,21 +104,22 @@ int send(char *addr_str, int data, int iface)
     return ERROR;
   }
 
-  netif = gnrc_netif_get_by_pid(iface);
-
   if (netif != NULL) {
       gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
       printf("contact_scheduler: netif hdr data is %s.\n",(char *)netif_hdr->data);
       gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
       LL_PREPEND(discovery_packet, netif_hdr);
   }
+
+
   DEBUG("contact_scheduler: Dispatching packet send.\n");
   if(!gnrc_netapi_dispatch_send(GNRC_NETTYPE_CONTACT_MANAGER, GNRC_NETREG_DEMUX_CTX_ALL, discovery_packet)) {
     DEBUG("contact_scheduler: Unable to find BP thread.\n");
     gnrc_pktbuf_release(discovery_packet);
     return ERROR;
   }
-  // print_bundle_storage();
+  print_bundle_storage();
+  free(payload_data);
   delete_bundle(bundle);
   return 0;
 }

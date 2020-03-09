@@ -5,6 +5,7 @@
 #include "net/gnrc/netif.h"
 #include "net/gnrc/bundle_protocol/contact_manager.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
+#include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/gnrc.h"
 #include "net/gnrc/netif.h"
 
@@ -23,6 +24,10 @@ static gnrc_pktsnip_t *_create_netif_hdr(uint8_t *dst_l2addr, unsigned dst_l2add
 static void _receive(struct actual_bundle *bundle);
 static void _send(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void* args);
+static int comparator (struct neighbor_t *neighbor, struct neighbor_t *compare_to_neighbor);
+
+
+struct neighbor_t *head_of_neighbors;
 
 kernel_pid_t gnrc_contact_manager_init(void)
 {
@@ -59,8 +64,34 @@ static gnrc_pktsnip_t *_create_netif_hdr(uint8_t *dst_l2addr, unsigned dst_l2add
 
 static void _receive(struct actual_bundle *bundle)
 {
-  (void) bundle;
+  DEBUG("contact_manager: Received bundle with version: %d.\n", bundle->primary_block.version);
 
+  struct bundle_canonical_block_t *payload_block = bundle_get_payload_block(bundle);
+  if (payload_block == NULL) {
+    DEBUG("contact_manager: Cannot extract payload block from received packet.\n");
+    return ;
+  }
+
+  struct neighbor_t *neighbor = (struct neighbor_t*)malloc(sizeof(struct neighbor_t));
+  neighbor->endpoint_scheme = bundle->primary_block.endpoint_scheme;
+  if (neighbor->endpoint_scheme == IPN) {
+    neighbor->endpoint_num = bundle->primary_block.src_num;
+  }
+  else if (neighbor->endpoint_scheme == DTN) {
+    neighbor->eid = bundle->primary_block.src_eid;
+  }
+  memcpy(neighbor->l2addr, payload_block->block_data, payload_block->data_len);
+  neighbor->l2addr_len = payload_block->data_len;
+
+  /* Adding neighbor in front of neighbor list if not present in list*/
+  struct neighbor_t *temp;
+  LL_SEARCH(head_of_neighbors, temp, neighbor, comparator);
+  if(!temp) {
+    DEBUG("contact_manager: Adding neighbor.\n");
+    LL_APPEND(head_of_neighbors, neighbor);
+  }
+  print_neighbor_list();
+  delete_bundle(bundle);
   return ;
 }
 
@@ -131,4 +162,29 @@ static void *_event_loop(void *args)
     }
   }
   return NULL;
+}
+
+static int comparator (struct neighbor_t *neighbor, struct neighbor_t *compare_to_neighbor)
+{
+  int res = -1;
+  if (neighbor->endpoint_scheme == compare_to_neighbor->endpoint_scheme) {
+    if (neighbor->endpoint_scheme == IPN) {
+      if(neighbor->endpoint_num == compare_to_neighbor->endpoint_num) {
+        res = strcmp((char*)neighbor->l2addr, (char*)compare_to_neighbor->l2addr);
+      }
+    }
+    else if (neighbor->endpoint_scheme == DTN) {
+      return strcmp((char*)neighbor->eid, (char*)compare_to_neighbor->eid) && strcmp((char*)neighbor->l2addr, (char*)compare_to_neighbor->l2addr);
+    }
+  }
+  return res;
+}
+
+void print_neighbor_list(void) {
+  struct neighbor_t *temp;
+  DEBUG("contact_manager: Printing neighbor list: ");
+  LL_FOREACH(head_of_neighbors, temp) {
+    DEBUG("(%lu, %s )-> ", temp->endpoint_num, temp->l2addr);
+  }
+  DEBUG(".\n");
 }
