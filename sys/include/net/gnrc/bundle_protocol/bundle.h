@@ -12,7 +12,7 @@
 #include "fmt.h"
 
 #define DUMMY_EID "test"
-#define DUMMY_SRC_NUM "20"
+#define DUMMY_SRC_NUM "40"
 #define BROADCAST_EID "broadcast"
 
 #define CONTACT_MANAGER_SERVICE_NUM "12"

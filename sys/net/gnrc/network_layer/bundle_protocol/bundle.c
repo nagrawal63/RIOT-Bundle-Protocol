@@ -9,7 +9,7 @@
 // Assuming the endpoint_scheme is the same for the src, dest and report nodes
 static bool is_fragment_bundle(struct actual_bundle* bundle);
 static void decode_primary_block_element(nanocbor_value_t *decoder, struct actual_bundle* bundle, uint8_t element);
-static void decode_canonical_block_element(nanocbor_value_t* decoder, struct bundle_canonical_block_t* block, uint8_t element);
+static int decode_canonical_block_element(nanocbor_value_t* decoder, struct bundle_canonical_block_t* block, uint8_t element);
 // static void insert_block_in_bundle(struct actual_bundle* bundle, struct bundle_canonical_block_t* block);
 static void print_canonical_block_list(struct actual_bundle *bundle) ;
 
@@ -263,15 +263,20 @@ int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc)
     return 1;
 }
 
-static void decode_primary_block_element(nanocbor_value_t *decoder, struct actual_bundle* bundle, uint8_t element)
+static int decode_primary_block_element(nanocbor_value_t *decoder, struct actual_bundle* bundle, uint8_t element)
 {
   switch(element){
     case VERSION:
       {
         // DEBUG("bundle: decoding bundle VERSION.\n");
         uint32_t temp;
-        nanocbor_get_uint32(decoder, &temp);
-        bundle->primary_block.version = temp;
+        if (nanocbor_get_uint32(decoder, &temp) >= 0) {
+          bundle->primary_block.version = temp;
+          return 0;
+        }
+        else {
+          return ERROR;
+        }
         // DEBUG("bundle: version extracted = %lu and set as %d.\n",temp, bundle->primary_block.version);
       }
       break;
@@ -279,8 +284,13 @@ static void decode_primary_block_element(nanocbor_value_t *decoder, struct actua
       {
         // DEBUG("bundle: decoding bundle FLAGS_PRIMARY.\n");
         uint32_t temp;
-        nanocbor_get_uint32(decoder, &temp);
-         bundle->primary_block.flags = temp;
+        if (nanocbor_get_uint32(decoder, &temp) >= 0) {
+          bundle->primary_block.flags = temp;
+          return 0;
+        }
+        else {
+          return ERROR;
+        }
       }
       break;
     case CRC_TYPE_PRIMARY:
@@ -416,35 +426,55 @@ static void decode_primary_block_element(nanocbor_value_t *decoder, struct actua
   }
 }
 
-static void decode_canonical_block_element(nanocbor_value_t* decoder, struct bundle_canonical_block_t* block, uint8_t element)
+static int decode_canonical_block_element(nanocbor_value_t* decoder, struct bundle_canonical_block_t* block, uint8_t element)
 {
     switch(element){
       case TYPE:
       {
         uint32_t temp;
-        nanocbor_get_uint32(decoder, &temp);
-        block->type = temp;
+        if (nanocbor_get_uint32(decoder, &temp) >= 0){
+          block->type = temp;
+          return 0;
+        }
+        else {
+          return ERROR;
+        }
       }
       break;
       case BLOCK_NUMBER:
       {
         uint32_t temp;
-        nanocbor_get_uint32(decoder, &temp);
-        block->block_number = temp;
+        if (nanocbor_get_uint32(decoder, &temp) >= 0){
+          block->block_number = temp;
+          return 0;
+        }
+        else {
+          return ERROR;
+        }
       }
       break;
       case FLAGS_CANONICAL:
       {
         uint32_t temp;
-        nanocbor_get_uint32(decoder, &temp);
-        block->flags = temp;
+        if (nanocbor_get_uint32(decoder, &temp) >= 0) {
+          block->flags = temp;
+          return 0;
+        }
+        else {
+          return ERROR;
+        }
       }
       break;
       case CRC_TYPE_CANONICAL:
       {
         uint32_t temp;
-        nanocbor_get_uint32(decoder, &temp);
-        block->crc_type = temp;
+        if (nanocbor_get_uint32(decoder, &temp) >= 0){
+          block->crc_type = temp;
+          return 0;
+        }
+        else {
+          return ERROR;
+        }
       }
       break;
       case BLOCK_DATA:
@@ -454,6 +484,10 @@ static void decode_canonical_block_element(nanocbor_value_t* decoder, struct bun
         if(nanocbor_get_bstr(decoder, &buf, &len) >= 0 && buf) {
           block->data_len = len;
           memcpy(block->block_data, buf, len);
+          return 0;
+        }
+        else {
+          return ERROR;
         }
         // DEBUG("bundle: decoder value inside decode_canonical_block_element is %02x.\n", *decoder->cur);
         // nanocbor_get_bstr(decoder, (const uint8_t**)&block->block_data, &len);
@@ -466,13 +500,19 @@ static void decode_canonical_block_element(nanocbor_value_t* decoder, struct bun
       {
         uint32_t temp;
         if(block->crc_type != NOCRC){
-          nanocbor_get_uint32(decoder, &temp);
-          block->crc = temp;
+          if (nanocbor_get_uint32(decoder, &temp) {
+            block->crc = temp;
+            return 0;
+          }
+          else {
+            return ERROR;
+          }
         }
       }
       break;
       default:
       {
+        return 0;
         break;
       }
     }
