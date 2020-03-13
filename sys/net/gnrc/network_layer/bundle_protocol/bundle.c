@@ -8,7 +8,7 @@
 
 // Assuming the endpoint_scheme is the same for the src, dest and report nodes
 static bool is_fragment_bundle(struct actual_bundle* bundle);
-static void decode_primary_block_element(nanocbor_value_t *decoder, struct actual_bundle* bundle, uint8_t element);
+static int decode_primary_block_element(nanocbor_value_t *decoder, struct actual_bundle* bundle, uint8_t element);
 static int decode_canonical_block_element(nanocbor_value_t* decoder, struct bundle_canonical_block_t* block, uint8_t element);
 // static void insert_block_in_bundle(struct actual_bundle* bundle, struct bundle_canonical_block_t* block);
 static void print_canonical_block_list(struct actual_bundle *bundle) ;
@@ -297,8 +297,13 @@ static int decode_primary_block_element(nanocbor_value_t *decoder, struct actual
     {
       // DEBUG("bundle: decoding bundle CRC_TYPE_PRIMARY.\n");
       uint32_t temp;
-      nanocbor_get_uint32(decoder, &temp);
-      bundle->primary_block.crc_type = temp;
+      if (nanocbor_get_uint32(decoder, &temp) >= 0) {
+        bundle->primary_block.crc_type = temp;
+        return 0;
+      }
+      else {
+        return ERROR;
+      }
     }
     break;
     case EID:
@@ -307,8 +312,9 @@ static int decode_primary_block_element(nanocbor_value_t *decoder, struct actual
       size_t len;
       uint32_t endpt_scheme;
       nanocbor_value_t arr1;
-      nanocbor_enter_array(decoder, &arr1);
-      nanocbor_get_uint32(&arr1, &endpt_scheme);
+      if (nanocbor_enter_array(decoder, &arr1) >= 0) {
+        nanocbor_get_uint32(&arr1, &endpt_scheme);
+      }
       bundle->primary_block.endpoint_scheme = endpt_scheme;
       if (bundle->primary_block.endpoint_scheme == DTN) {
         nanocbor_get_tstr(&arr1, (const uint8_t**)&bundle->primary_block.dest_eid,&len);
@@ -424,6 +430,7 @@ static int decode_primary_block_element(nanocbor_value_t *decoder, struct actual
       break;
     }
   }
+  return 0;
 }
 
 static int decode_canonical_block_element(nanocbor_value_t* decoder, struct bundle_canonical_block_t* block, uint8_t element)
@@ -500,7 +507,7 @@ static int decode_canonical_block_element(nanocbor_value_t* decoder, struct bund
       {
         uint32_t temp;
         if(block->crc_type != NOCRC){
-          if (nanocbor_get_uint32(decoder, &temp) {
+          if (nanocbor_get_uint32(decoder, &temp) >= 0) {
             block->crc = temp;
             return 0;
           }
@@ -516,6 +523,7 @@ static int decode_canonical_block_element(nanocbor_value_t* decoder, struct bund
         break;
       }
     }
+    return 0;
 }
 
 //assuming space is preallocated for the bundle here
