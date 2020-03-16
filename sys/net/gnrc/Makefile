@@ -97,6 +97,9 @@ endif
 ifneq (,$(filter gnrc_contact_scheduler_periodic,$(USEMODULE)))
   DIRS += network_layer/bundle_protocol/contact_scheduler
 endif
+ifneq (,$(filter routing_epidemic,$(USEMODULE)))
+  DIRS += network_layer/bundle_protocol/routing
+endif
 ifneq (,$(filter gnrc_sixlowpan_ctx,$(USEMODULE)))
   DIRS += network_layer/sixlowpan/ctx
 endif

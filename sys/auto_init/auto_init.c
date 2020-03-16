@@ -109,6 +109,10 @@
 #include "net/gnrc/bundle_protocol/contact_scheduler_periodic.h"
 #endif
 
+#ifdef MODULE_ROUTING_EPIDEMIC
+#include "net/gnrc/bundle_protocol/routing_epidemic.h"
+#endif
+
 #ifdef MODULE_TEST_UTILS_INTERACTIVE_SYNC
 #if !defined(MODULE_SHELL_COMMANDS) || !defined(MODULE_SHELL)
 #include "test_utils/interactive_sync.h"
@@ -162,6 +166,10 @@ void auto_init(void)
 #ifdef MODULE_GNRC_CONTACT_SCHEDULER_PERIODIC
     DEBUG("Auto init gnrc_contact_scheduler_periodic module.\n");
     gnrc_contact_scheduler_periodic_init();
+#endif
+#ifdef MODULE_ROUTING_EPIDEMIC
+    DEBUG("Auto init routing_epidemic module.\n");
+    routing_epidemic_init();
 #endif
 #ifdef MODULE_GNRC_IPV6
     DEBUG("Auto init gnrc_ipv6 module.\n");

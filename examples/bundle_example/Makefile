@@ -26,6 +26,7 @@ USEMODULE +=gnrc_sixlowpan
 USEMODULE += gnrc_bp
 USEMODULE += gnrc_contact_manager
 USEMODULE += gnrc_contact_scheduler_periodic
+USEMODULE += routing_epidemic
 # Add a routing protocol
 # USEMODULE += gnrc_rpl
 # USEMODULE += auto_init_gnrc_rpl

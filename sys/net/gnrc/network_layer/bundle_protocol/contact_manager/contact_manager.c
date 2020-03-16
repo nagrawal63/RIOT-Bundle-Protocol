@@ -26,7 +26,6 @@ static void _send(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void* args);
 static int comparator (struct neighbor_t *neighbor, struct neighbor_t *compare_to_neighbor);
 
-
 struct neighbor_t *head_of_neighbors;
 
 kernel_pid_t gnrc_contact_manager_init(void)
@@ -203,4 +202,8 @@ void print_neighbor_list(void) {
     DEBUG("(%lu, %s )-> ", temp->endpoint_num, gnrc_netif_addr_to_str(temp->l2addr, temp->l2addr_len, addr_str));
   }
   DEBUG(".\n");
+}
+
+struct neighbor_t *get_neighbor_list(void) {
+  return head_of_neighbors;
 }

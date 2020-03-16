@@ -21,6 +21,8 @@ struct neighbor_t{
   struct neighbor_t *next;
 };
 
+
+
 /**
  * @brief   Initialization of the CONTACT_MANAGER thread.
  *
@@ -34,6 +36,7 @@ struct neighbor_t{
  */
 kernel_pid_t gnrc_contact_manager_init(void);
 void print_neighbor_list(void);
+struct neighbor_t *get_neighbor_list(void);
 
 #ifdef __cplusplus
 }
