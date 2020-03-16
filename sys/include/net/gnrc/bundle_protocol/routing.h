@@ -10,4 +10,10 @@ struct router{
 	struct neighbor_t* (*route_receivers) (uint32_t dst_num);
 };
 
+extern struct router *this_router;
+
+static inline struct router *get_router(void) {
+	return this_router;
+}
+
 #endif

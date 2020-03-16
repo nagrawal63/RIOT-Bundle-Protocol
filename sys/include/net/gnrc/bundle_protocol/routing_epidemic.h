@@ -6,6 +6,6 @@
 
 void routing_epidemic_init(void);
 struct neighbor_t *route_receivers(uint32_t dst_num);
-struct router* get_router(void);
+// struct router* get_router(void);
 
 #endif

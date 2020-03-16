@@ -3,6 +3,9 @@
 
 #include <stdbool.h>
 
+#include "thread.h"
+#include "kernel_types.h"
+
 #include "net/gnrc/bundle_protocol/contact_manager_config.h"
 #include "net/gnrc/ipv6/nib/conf.h"
 

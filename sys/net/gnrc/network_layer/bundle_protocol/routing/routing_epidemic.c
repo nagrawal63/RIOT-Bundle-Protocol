@@ -10,7 +10,7 @@
 #define ENABLE_DEBUG    (1)
 #include "debug.h"
 
-struct router *this_router;
+// struct router *this_router;
 
 void routing_epidemic_init(void) {
 	DEBUG("routing_epidemic: Initializing epidemic routing.\n");
@@ -33,6 +33,6 @@ struct neighbor_t *route_receivers(uint32_t dst_num) {
 	}
 }
 
-struct router* get_router(void) {
-	return this_router;
-}
+// struct router* get_router(void) {
+// 	return this_router;
+// }
