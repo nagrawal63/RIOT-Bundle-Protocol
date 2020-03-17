@@ -5,10 +5,17 @@
 
 #include "net/gnrc/bundle_protocol/contact_manager_config.h"
 
-#define CONTACT_PERIOD_SECONDS 30
+#define CONTACT_PERIOD_SECONDS 60
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+/**
+ * @brief   Default priority for the _CONTACT_MANAGER_BP thread.
+ */
+#ifndef GNRC_CONTACT_SCHEDULER_PRIO
+#define GNRC_CONTACT_SCHEDULER_PRIO                 (THREAD_PRIORITY_MAIN - 2)
 #endif
 
 /**

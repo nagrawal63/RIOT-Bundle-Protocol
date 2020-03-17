@@ -8,6 +8,7 @@
 
 #include "net/gnrc/bundle_protocol/config.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
+#include "net/gnrc/bundle_protocol/contact_manager.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,6 +29,7 @@ kernel_pid_t gnrc_bp_init(void);
 
 int gnrc_bp_dispatch(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bundle *bundle, uint16_t cmd);
 
+void send_bundles_to_new_neighbor (struct neighbor_t *neighbor);
 void send_ack(void);
 
 #ifdef __cplusplus

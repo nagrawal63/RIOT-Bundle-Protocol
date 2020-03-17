@@ -19,7 +19,7 @@ extern "C" {
  * @brief   Default priority for the _CONTACT_MANAGER_BP thread.
  */
 #ifndef GNRC_CONTACT_MANAGER_PRIO
-#define GNRC_CONTACT_MANAGER_PRIO                 (THREAD_PRIORITY_MAIN - 6)
+#define GNRC_CONTACT_MANAGER_PRIO                 (THREAD_PRIORITY_MAIN - 3)
 #endif
 
 /**

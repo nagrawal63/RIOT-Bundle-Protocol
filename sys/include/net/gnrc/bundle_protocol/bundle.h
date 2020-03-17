@@ -13,7 +13,7 @@
 
 #define DUMMY_EID "test"
 #define DUMMY_SRC_NUM "40"
-#define BROADCAST_EID "broadcast"
+#define BROADCAST_EID "11111111"
 
 #define CONTACT_MANAGER_SERVICE_NUM "12"
 

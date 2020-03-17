@@ -34,7 +34,7 @@ kernel_pid_t gnrc_contact_scheduler_periodic_init(void)
     return _pid;
   }
 
-  _pid = thread_create(_stack, sizeof(_stack), GNRC_CONTACT_MANAGER_PRIO, THREAD_CREATE_STACKTEST, contact_scheduler, NULL, "contact_scheduler");
+  _pid = thread_create(_stack, sizeof(_stack), GNRC_CONTACT_SCHEDULER_PRIO, THREAD_CREATE_STACKTEST, contact_scheduler, NULL, "contact_scheduler");
   // to be part of bundle_agent
 
   DEBUG("contact_scheduler: Thread created with pid: %d.\n", _pid);
@@ -45,10 +45,10 @@ static uint8_t *_encode_discovery_bundle(struct actual_bundle *bundle, size_t *r
 {
   nanocbor_encoder_t enc;
   nanocbor_encoder_init(&enc, NULL, 0);
-  DEBUG("Will try to encode bundle for the first time.\n");
+  DEBUG("contact_scheduler: Will try to encode bundle for the first time.\n");
   bundle_encode(bundle, &enc);
-  DEBUG("contact_scheduler: space required to encode this discovery bundle: %u.\n", (uint8_t)*required_size);
   *required_size = nanocbor_encoded_len(&enc);
+  DEBUG("contact_scheduler: space required to encode this discovery bundle: %u.\n", (uint8_t)*required_size);
   uint8_t *buf = malloc(*required_size);
   nanocbor_encoder_init(&enc, buf, *required_size);
   bundle_encode(bundle, &enc);

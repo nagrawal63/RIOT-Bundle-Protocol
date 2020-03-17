@@ -19,7 +19,7 @@ extern "C" {
  * @brief   Default priority for the BP thread.
  */
 #ifndef GNRC_BP_PRIO
-#define GNRC_BP_PRIO                 (THREAD_PRIORITY_MAIN - 5)
+#define GNRC_BP_PRIO                 (THREAD_PRIORITY_MAIN - 4)
 #endif
 
 /**

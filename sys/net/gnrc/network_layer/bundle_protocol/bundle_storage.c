@@ -3,7 +3,7 @@
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG (1)
 #include "debug.h"
 
 static uint8_t next_block_number = 0;
@@ -35,7 +35,7 @@ struct actual_bundle* get_space_for_bundle(void)
 {
   struct bundle_list *ret = NULL;
   if(free_list == NULL){
-    printf("Free list is NULL.\n");
+    DEBUG("bundle_storage: Free list is NULL.\n");
     return NULL;
   }
   ret = free_list;
@@ -43,7 +43,7 @@ struct actual_bundle* get_space_for_bundle(void)
   free_list = free_list->next;
 
   if(head_of_store != ret) {
-    printf("head_of_store != ret.\n");
+    DEBUG("bundle_storage: head_of_store != ret.\n");
     ret->next = head_of_store;
     head_of_store = ret;
   } else {
@@ -117,11 +117,16 @@ struct bundle_list* find_bundle_in_list ( struct actual_bundle* bundle)
 
 void print_bundle_storage(void)
 {
-  printf("Printing bundle storage list.\n");
+  DEBUG("bundle_storage: Printing bundle storage list.\n");
   struct bundle_list* temp = head_of_store;
   while(temp!=NULL){
-    printf("%ld->", temp->unique_id);
+    DEBUG("%ld->", temp->unique_id);
     temp = temp->next;
   }
-  printf("NULL.\n");
+  DEBUG("NULL.\n");
+}
+
+
+struct bundle_list *get_bundle_list(void) {
+  return head_of_store;
 }

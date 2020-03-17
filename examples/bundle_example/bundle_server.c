@@ -79,7 +79,9 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
   bundle_add_block(bundle1, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);
   // printf("Adding block completed.\n");
   // printf("bundle: Set version to %d.\n",bundle1->primary_block.version);
-  print_bundle(bundle1);
+
+  // print_bundle(bundle1);
+  
   // if((bundle2 = create_bundle()) == NULL){
   //   printf("Could not create bundle.\n");
   //   return;

@@ -28,5 +28,6 @@ uint8_t get_next_block_number(void);
 struct bundle_list* get_previous_bundle_in_list(struct actual_bundle* bundle);
 struct bundle_list* find_bundle_in_list(struct actual_bundle* bundle);
 void print_bundle_storage(void);
+struct bundle_list *get_bundle_list(void);
 
 #endif

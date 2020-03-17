@@ -29,7 +29,7 @@ static char _stack[GNRC_BP_STACK_SIZE];
 
 static void _receive(gnrc_pktsnip_t *pkt);
 static void _send(struct actual_bundle *bundle);
-static void _send_discovery_packet(gnrc_pktsnip_t *pkt);
+static void _send_packet(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void *args);
 static void print_potential_neighbor_list(struct neighbor_t* neighbors);
 
@@ -90,8 +90,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
       delete_bundle(bundle);
       return ;
     }
-    DEBUG("bp: Printing received packet!!!!!!!!!!!!!!!!!!!!.\n");
-    print_bundle(bundle);
+    // DEBUG("bp: Printing received packet!!!!!!!!!!!!!!!!!!!!.\n");
+    // print_bundle(bundle);
     DEBUG("bp: will send packet to upper layer.\n");
   #ifdef MODULE_GNRC_CONTACT_MANAGER
     if (bundle->primary_block.service_num  == (uint32_t)atoi(CONTACT_MANAGER_SERVICE_NUM)) {
@@ -113,6 +113,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
         }
         else {
           send_ack();
+          delete_bundle(bundle);
         }
       } /*Bundle not for this node, forward received bundle*/
       else {
@@ -170,8 +171,6 @@ static void _receive(gnrc_pktsnip_t *pkt)
           }
         }
       }
-
-      delete_bundle(bundle);
     }
 
     return ;
@@ -194,7 +193,7 @@ static void _send(struct actual_bundle *bundle)
     print_potential_neighbor_list(neighbor_list_to_send);
     if (neighbor_list_to_send == NULL) {
       DEBUG("bp: Could not find neighbors to send bundle to.\n");
-      delete_bundle(bundle);
+      // delete_bundle(bundle);
       return ;
     }
 
@@ -229,12 +228,12 @@ static void _send(struct actual_bundle *bundle)
         gnrc_netapi_send(netif->pid, pkt);
       }
     }
-   
-    delete_bundle(bundle);
+    
+    // delete_bundle(bundle);
     return ;
 }
 
-static void _send_discovery_packet(gnrc_pktsnip_t *pkt)
+static void _send_packet(gnrc_pktsnip_t *pkt)
 {
   gnrc_netif_t *netif = NULL;
   netif = gnrc_netif_hdr_get_netif(pkt->data);
@@ -262,7 +261,7 @@ static void *_event_loop(void *args)
       case GNRC_NETAPI_MSG_TYPE_SND:
           DEBUG("bp: GNRC_NETDEV_MSG_TYPE_SND received\n");
           if(strcmp(thread_get(msg.sender_pid)->name, "contact_manager") == 0) {
-            _send_discovery_packet(msg.content.ptr);
+            _send_packet(msg.content.ptr);
             break;
           }
           _send(msg.content.ptr);
@@ -289,6 +288,63 @@ static void print_potential_neighbor_list(struct neighbor_t* neighbors) {
   DEBUG(".\n");
 }
 
+void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
+    
+    // struct neighbor_t *temp;
+    // DEBUG("bp: Send type: %d\n",bundle->primary_block.version);
+    struct bundle_list *bundle_store_list, *temp_bundle;
+
+    // netif = gnrc_netif_get_by_pid(iface);
+    DEBUG("bp: Sending bundle to new neighbor on hardcoded interface %d.\n", iface);
+
+    bundle_store_list = get_bundle_list();
+    print_bundle_storage();
+    LL_FOREACH(bundle_store_list, temp_bundle){
+      if(temp_bundle->current_bundle.primary_block.dst_num != (uint32_t)atoi(BROADCAST_EID)) {
+
+        gnrc_netif_t *netif = NULL;
+        nanocbor_encoder_t enc;
+
+        netif = gnrc_netif_get_by_pid(iface);
+
+        DEBUG("bp: Sending this bundle to new neighbor.\n");
+        print_bundle(&temp_bundle->current_bundle);
+
+        nanocbor_encoder_init(&enc, NULL, 0);
+        bundle_encode(&temp_bundle->current_bundle, &enc);
+        size_t required_size = nanocbor_encoded_len(&enc);
+        uint8_t *buf = malloc(required_size);
+        nanocbor_encoder_init(&enc, buf, required_size);
+        bundle_encode(&temp_bundle->current_bundle, &enc);
+        printf("Encoded bundle: ");
+        for(int i=0;i<(int)required_size;i++){
+          printf("%02x",buf[i]);
+        }
+        printf(" at %p\n", &temp_bundle->current_bundle);
+
+        gnrc_pktsnip_t *pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
+        if (pkt == NULL) {
+          DEBUG("bp: unable to copy data to packet buffer.\n");
+          delete_bundle(&temp_bundle->current_bundle);
+          free(buf);
+          return ;
+        }
+        
+       if (netif != NULL) {
+            gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, neighbor->l2addr, neighbor->l2addr_len);
+            // DEBUG("bp: netif hdr data is %s.\n",(char *)netif_hdr->data);
+            gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
+            LL_PREPEND(pkt, netif_hdr);
+        }
+        if (netif->pid != 0) {
+          DEBUG("bp: Sending stored packet to process with pid %d.\n", netif->pid);
+          gnrc_netapi_send(netif->pid, pkt);
+        }
+      }
+    }
+    return ;
+}
+
 void send_ack(void) {
-  
+
 }

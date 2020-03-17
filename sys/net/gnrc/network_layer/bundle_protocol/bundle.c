@@ -867,7 +867,7 @@ int bundle_add_block(struct actual_bundle* bundle, uint8_t type, uint64_t flags,
   DEBUG("bundle: Data copying inside bundle over.\n");
   // insert_block_in_bundle(bundle, &block);
   bundle->num_of_blocks++;
-  DEBUG("Block inserted.\n");
+  DEBUG("bundle: Block inserted.\n");
   print_canonical_block_list(bundle);
   return 1;
 }
@@ -1085,7 +1085,8 @@ void print_bundle(struct actual_bundle* bundle)
   struct bundle_canonical_block_t *temp = bundle->other_blocks;
   int i = 0;
   while (i < bundle->num_of_blocks) {
-    DEBUG("Bundle canonical block of type: %d with data :%s.\n", temp[i].type, temp[i].block_data);
+    DEBUG("Bundle canonical block of type: %d with data: ", temp[i].type);
+    od_hex_dump(temp[i].block_data, temp[i].data_len, OD_WIDTH_DEFAULT);
     i++;
   }
   DEBUG("Finished printing bundle.\n");

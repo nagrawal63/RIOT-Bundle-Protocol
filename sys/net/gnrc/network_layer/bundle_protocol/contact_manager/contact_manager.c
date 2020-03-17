@@ -3,6 +3,7 @@
 #include "utlist.h"
 
 #include "net/gnrc/netif.h"
+#include "net/gnrc/bp.h"
 #include "net/gnrc/bundle_protocol/contact_manager.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
@@ -88,6 +89,8 @@ static void _receive(struct actual_bundle *bundle)
   if(!temp) {
     DEBUG("contact_manager: Adding neighbor.\n");
     LL_APPEND(head_of_neighbors, neighbor);
+    DEBUG("contact_manager:Sending bundles in store to this new neighbor.\n");
+    send_bundles_to_new_neighbor(neighbor);
   }
   print_neighbor_list();
   delete_bundle(bundle);
