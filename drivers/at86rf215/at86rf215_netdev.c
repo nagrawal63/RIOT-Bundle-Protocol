@@ -35,7 +35,7 @@
 #include "at86rf215_netdev.h"
 #include "at86rf215_internal.h"
 
-#define ENABLE_DEBUG (1)
+#define ENABLE_DEBUG (0)
 #include "debug.h"
 
 static int _send(netdev_t *netdev, const iolist_t *iolist);

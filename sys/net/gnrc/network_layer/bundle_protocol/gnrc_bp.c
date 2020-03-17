@@ -17,6 +17,10 @@
 
 static kernel_pid_t _pid = KERNEL_PID_UNDEF;
 
+//Hardcoded right now, find a way to change this soon
+int iface = 9;
+
+
 #if ENABLE_DEBUG
 static char _stack[GNRC_BP_STACK_SIZE +THREAD_EXTRA_STACKSIZE_PRINTF];
 #else
@@ -27,6 +31,7 @@ static void _receive(gnrc_pktsnip_t *pkt);
 static void _send(struct actual_bundle *bundle);
 static void _send_discovery_packet(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void *args);
+static void print_potential_neighbor_list(struct neighbor_t* neighbors);
 
 kernel_pid_t gnrc_bp_init(void)
 {
@@ -66,6 +71,10 @@ int gnrc_bp_dispatch(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bund
   return ERROR;
 }
 
+void process_bundle_before_forwarding(struct actual_bundle *bundle) {
+  (void) bundle;
+}
+
 static void _receive(gnrc_pktsnip_t *pkt)
 {
     DEBUG("bp: Receive type: %d with length: %d and data: %s\n",pkt->type, pkt->size, (uint8_t*)pkt->data);
@@ -76,7 +85,11 @@ static void _receive(gnrc_pktsnip_t *pkt)
     }
 
     struct actual_bundle *bundle = create_bundle();
-    bundle_decode(bundle, pkt->data, pkt->size);
+    if (bundle_decode(bundle, pkt->data, pkt->size) == ERROR) {
+      DEBUG("bp: Packet received not for bundle protocol.\n");
+      delete_bundle(bundle);
+      return ;
+    }
     DEBUG("bp: Printing received packet!!!!!!!!!!!!!!!!!!!!.\n");
     print_bundle(bundle);
     DEBUG("bp: will send packet to upper layer.\n");
@@ -92,6 +105,72 @@ static void _receive(gnrc_pktsnip_t *pkt)
   #endif
     else {
       DEBUG("bp: Not a discovery packet!!!!!!!!!!!!!!!!!!\n");
+      /* This bundle is for the current node, send to application that sent it*/
+      if (bundle->primary_block.dst_num == (uint32_t)atoi(get_src_num())) {
+        if (!gnrc_bp_dispatch(GNRC_NETTYPE_BP, bundle->primary_block.service_num, bundle, GNRC_NETAPI_MSG_TYPE_RCV)) {
+          DEBUG("bp: Couldn't send bundle to registered receivers.\n");
+          delete_bundle(bundle);
+        }
+        else {
+          send_ack();
+        }
+      } /*Bundle not for this node, forward received bundle*/
+      else {
+        struct router *cur_router = get_router();
+        nanocbor_encoder_t enc;
+        gnrc_netif_t *netif = NULL;
+        struct neighbor_t *temp;
+
+        netif = gnrc_netif_get_by_pid(iface);
+        DEBUG("bp: Sending bundle to hardcoded interface %d.\n", iface);
+
+        struct neighbor_t *neighbors_to_send = cur_router->route_receivers(bundle->primary_block.dst_num);
+        if (neighbors_to_send == NULL) {
+          DEBUG("bp: Could not find neighbors to send bundle to.\n");
+          delete_bundle(bundle);
+          return ;
+        }
+
+        process_bundle_before_forwarding(bundle);
+
+        nanocbor_encoder_init(&enc, NULL, 0);
+        bundle_encode(bundle, &enc);
+        size_t required_size = nanocbor_encoded_len(&enc);
+        uint8_t *buf = malloc(required_size);
+        nanocbor_encoder_init(&enc, buf, required_size);
+        bundle_encode(bundle, &enc);
+        printf("Encoded bundle while forwarding: ");
+        for(int i=0;i<(int)required_size;i++){
+          printf("%02x",buf[i]);
+        }
+        printf(" at %p\n", bundle);
+
+        gnrc_pktsnip_t *pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
+        if (pkt == NULL) {
+          DEBUG("bp: unable to copy data to discovery packet buffer.\n");
+          delete_bundle(bundle);
+          free(buf);
+          return ;
+        }
+        /* TODO: Think of the case when the data is sent to no node, then free the space allocated for the 
+            encoded bundle*/
+        LL_FOREACH(neighbors_to_send, temp) {
+          if (temp->endpoint_scheme == IPN && temp->endpoint_num != (uint32_t)atoi(get_src_num())) {
+            DEBUG("bp:Forwarding packet to neighbor with eid %lu.\n", temp->endpoint_num);
+            if (netif != NULL) {
+              gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
+              DEBUG("bp: netif hdr data is %s.\n",(char *)netif_hdr->data);
+              gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
+              LL_PREPEND(pkt, netif_hdr);
+            }
+            if (netif->pid != 0) {
+              DEBUG("bp: Sending discovery packet to process with pid %d.\n", netif->pid);
+              gnrc_netapi_send(netif->pid, pkt);
+            }
+          }
+        }
+      }
+
       delete_bundle(bundle);
     }
 
@@ -102,9 +181,9 @@ static void _send(struct actual_bundle *bundle)
 {
     (void) bundle;
     struct router *cur_router = get_router();
+    struct neighbor_t *temp;
     DEBUG("bp: Send type: %d\n",bundle->primary_block.version);
 
-    int iface = 9;
     gnrc_netif_t *netif = NULL;
     nanocbor_encoder_t enc;
 
@@ -133,22 +212,22 @@ static void _send(struct actual_bundle *bundle)
 
     gnrc_pktsnip_t *pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
     if (pkt == NULL) {
-      printf("unable to copy data to discovery packet buffer.\n");
+      DEBUG("bp: unable to copy data to discovery packet buffer.\n");
       delete_bundle(bundle);
       free(buf);
       return ;
     }
     LL_FOREACH(neighbor_list_to_send, temp) {
      if (netif != NULL) {
-            gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
-            printf("netif hdr data is %s.\n",(char *)netif_hdr->data);
-            gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
-            LL_PREPEND(pkt, netif_hdr);
-        }
-        if (netif->pid != 0) {
-          DEBUG("bp: Sending discovery packet to process with pid %d.\n", netif->pid);
-          gnrc_netapi_send(netif->pid, pkt);
-        }
+          gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
+          DEBUG("bp: netif hdr data is %s.\n",(char *)netif_hdr->data);
+          gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
+          LL_PREPEND(pkt, netif_hdr);
+      }
+      if (netif->pid != 0) {
+        DEBUG("bp: Sending discovery packet to process with pid %d.\n", netif->pid);
+        gnrc_netapi_send(netif->pid, pkt);
+      }
     }
    
     delete_bundle(bundle);
@@ -200,7 +279,7 @@ static void *_event_loop(void *args)
   return NULL;
 }
 
-void print_potential_neighbor_list(struct neighbor_t* neighbors) {
+static void print_potential_neighbor_list(struct neighbor_t* neighbors) {
   char addr_str[GNRC_NETIF_HDR_L2ADDR_PRINT_LEN];
   struct neighbor_t *temp;
   DEBUG("bp: Printing neighbor list: ");
@@ -208,4 +287,8 @@ void print_potential_neighbor_list(struct neighbor_t* neighbors) {
     DEBUG("(%lu, %s )-> ", temp->endpoint_num, gnrc_netif_addr_to_str(temp->l2addr, temp->l2addr_len, addr_str));
   }
   DEBUG(".\n");
+}
+
+void send_ack(void) {
+  
 }

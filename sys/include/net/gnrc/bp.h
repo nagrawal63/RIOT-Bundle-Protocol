@@ -28,6 +28,8 @@ kernel_pid_t gnrc_bp_init(void);
 
 int gnrc_bp_dispatch(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bundle *bundle, uint16_t cmd);
 
+void send_ack(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -533,6 +533,10 @@ int bundle_decode(struct actual_bundle* bundle, uint8_t *buffer, size_t buf_len)
   nanocbor_value_t decoder;
 
   nanocbor_decoder_init(&decoder, buffer, buf_len);
+
+  if (*decoder.cur != 0x9f) {
+    return ERROR;
+  }
   //moving the pointer in the decoder 1 byte ahead to ignore start of indefinite array thing
   decoder.cur++;
   // DEBUG("bundle: starting bundle at %02x.\n", *decoder.cur);

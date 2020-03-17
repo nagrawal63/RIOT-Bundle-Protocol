@@ -31,7 +31,7 @@
 #include "net/inet_csum.h"
 
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG    (1)
 #include "debug.h"
 
 /**
@@ -154,7 +154,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
 
     /* get port (netreg demux context) */
     port = (uint32_t)byteorder_ntohs(hdr->dst_port);
-
+    DEBUG("udp: Sending to other receivers with port %lu.\n", port);
     /* send payload to receivers */
     if (!gnrc_netapi_dispatch_receive(GNRC_NETTYPE_UDP, port, pkt)) {
         DEBUG("udp: unable to forward packet as no one is interested in it\n");
