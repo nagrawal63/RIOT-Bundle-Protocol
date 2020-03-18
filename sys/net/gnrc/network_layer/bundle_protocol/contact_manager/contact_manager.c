@@ -10,6 +10,8 @@
 #include "net/gnrc/netif/hdr.h"
 #include "net/gnrc.h"
 
+#include <stdio.h>
+
 #define ENABLE_DEBUG  (1)
 #include "debug.h"
 
@@ -26,6 +28,7 @@ static void _receive(struct actual_bundle *bundle);
 static void _send(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void* args);
 static int comparator (struct neighbor_t *neighbor, struct neighbor_t *compare_to_neighbor);
+static void timer_expiry_callback (void *args);
 
 struct neighbor_t *head_of_neighbors;
 
@@ -37,7 +40,7 @@ kernel_pid_t gnrc_contact_manager_init(void)
 
   _pid = thread_create(_stack, sizeof(_stack), GNRC_CONTACT_MANAGER_PRIO, THREAD_CREATE_STACKTEST, _event_loop, NULL, "contact_manager");
 
-  DEBUG("contact_manager: Thread created with pid: %d.\n", _pid);
+  // DEBUG("contact_manager: Thread created with pid: %d.\n", _pid);
   return _pid;
 }
 
@@ -47,7 +50,7 @@ static gnrc_pktsnip_t *_create_netif_hdr(uint8_t *dst_l2addr, unsigned dst_l2add
   gnrc_netif_hdr_t *hdr;
 
   if (netif_hdr == NULL) {
-      DEBUG("contact_manager: error on interface header allocation, dropping packet\n");
+      // DEBUG("contact_manager: error on interface header allocation, dropping packet\n");
       gnrc_pktbuf_release(pkt);
       return NULL;
   }
@@ -64,15 +67,15 @@ static gnrc_pktsnip_t *_create_netif_hdr(uint8_t *dst_l2addr, unsigned dst_l2add
 
 static void _receive(struct actual_bundle *bundle)
 {
-  DEBUG("contact_manager: Received bundle with version: %d.\n", bundle->primary_block.version);
-  char addr_str[GNRC_NETIF_HDR_L2ADDR_PRINT_LEN];
   struct bundle_canonical_block_t *payload_block = bundle_get_payload_block(bundle);
+
   if (payload_block == NULL) {
     DEBUG("contact_manager: Cannot extract payload block from received packet.\n");
     return ;
   }
 
   struct neighbor_t *neighbor = (struct neighbor_t*)malloc(sizeof(struct neighbor_t));
+
   neighbor->endpoint_scheme = bundle->primary_block.endpoint_scheme;
   if (neighbor->endpoint_scheme == IPN) {
     neighbor->endpoint_num = bundle->primary_block.src_num;
@@ -80,9 +83,13 @@ static void _receive(struct actual_bundle *bundle)
   else if (neighbor->endpoint_scheme == DTN) {
     neighbor->eid = bundle->primary_block.src_eid;
   }
+
   memcpy(neighbor->l2addr, payload_block->block_data, payload_block->data_len);
   neighbor->l2addr_len = payload_block->data_len;
-  DEBUG("contact_manager : Neighbor addr inside receive: %s.\n", gnrc_netif_addr_to_str(neighbor->l2addr, neighbor->l2addr_len, addr_str));
+  
+  create_neighbor_expiry_timer(neighbor);
+  xtimer_set(&neighbor->expiry_timer, xtimer_ticks_from_usec(NEIGHBOR_PURGE_TIMER_SECONDS*1000000).ticks32);
+
   /* Adding neighbor in front of neighbor list if not present in list*/
   struct neighbor_t *temp;
   LL_SEARCH(head_of_neighbors, temp, neighbor, comparator);
@@ -91,6 +98,10 @@ static void _receive(struct actual_bundle *bundle)
     LL_APPEND(head_of_neighbors, neighbor);
     DEBUG("contact_manager:Sending bundles in store to this new neighbor.\n");
     send_bundles_to_new_neighbor(neighbor);
+  }
+  else {
+    xtimer_remove(&temp->expiry_timer);
+    xtimer_set(&temp->expiry_timer, xtimer_ticks_from_usec(NEIGHBOR_PURGE_TIMER_SECONDS*1000000).ticks32);
   }
   print_neighbor_list();
   delete_bundle(bundle);
@@ -202,11 +213,25 @@ void print_neighbor_list(void) {
   struct neighbor_t *temp;
   DEBUG("contact_manager: Printing neighbor list: ");
   LL_FOREACH(head_of_neighbors, temp) {
-    DEBUG("(%lu, %s )-> ", temp->endpoint_num, gnrc_netif_addr_to_str(temp->l2addr, temp->l2addr_len, addr_str));
+    DEBUG("(%lu, %s)-> ", temp->endpoint_num, gnrc_netif_addr_to_str(temp->l2addr, temp->l2addr_len, addr_str));
   }
   DEBUG(".\n");
 }
 
 struct neighbor_t *get_neighbor_list(void) {
   return head_of_neighbors;
+}
+
+void create_neighbor_expiry_timer(struct neighbor_t *neighbor) {
+  neighbor->expiry_timer.callback = &timer_expiry_callback;
+  neighbor->expiry_timer.arg = neighbor;
+  neighbor->expiry_timer.next = NULL;
+}
+
+static void timer_expiry_callback (void *args) {
+  (void) args;
+  // printf("contact_manager: Going to delete neighbor with id: %lu on thread %s.\n", ((struct neighbor_t*)args)->endpoint_num, thread_getname(thread_getpid()));
+  LL_DELETE(head_of_neighbors, ((struct neighbor_t*)args));
+  // printf("contact_manager: neighbor list after deleting.\n");
+  // print_neighbor_list();
 }

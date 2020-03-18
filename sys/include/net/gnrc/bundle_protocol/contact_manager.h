@@ -5,6 +5,7 @@
 
 #include "thread.h"
 #include "kernel_types.h"
+#include "xtimer.h"
 
 #include "net/gnrc/bundle_protocol/contact_manager_config.h"
 #include "net/gnrc/ipv6/nib/conf.h"
@@ -12,6 +13,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define NEIGHBOR_PURGE_TIMER_SECONDS 20
 
 //Don't implement linked list stuff for this. Rather directly use
 //inbuilt LL stuff of RIOT
@@ -21,6 +24,7 @@ struct neighbor_t{
   uint8_t *eid;
   uint8_t l2addr [GNRC_IPV6_NIB_L2ADDR_MAX_LEN];
   uint8_t 	l2addr_len;
+  xtimer_t expiry_timer;
   struct neighbor_t *next;
 };
 
@@ -40,6 +44,7 @@ struct neighbor_t{
 kernel_pid_t gnrc_contact_manager_init(void);
 void print_neighbor_list(void);
 struct neighbor_t *get_neighbor_list(void);
+void create_neighbor_expiry_timer(struct neighbor_t *neighbor);
 
 #ifdef __cplusplus
 }

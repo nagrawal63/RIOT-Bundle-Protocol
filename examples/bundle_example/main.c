@@ -22,6 +22,7 @@
 
 #include "shell.h"
 #include "msg.h"
+#include "xtimer.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 // #include "bundle_server.c"
 

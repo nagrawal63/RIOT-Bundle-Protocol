@@ -39,7 +39,7 @@
 #define BLOCK_DATA_BUF_SIZE 100
 
 #define MAX_NUM_OF_BLOCKS 3
-//#define MAX_ENDPOINT_SIZE 10
+#define MAX_ENDPOINT_SIZE 32
 
 //Primary block defines
 enum primary_block_elements{

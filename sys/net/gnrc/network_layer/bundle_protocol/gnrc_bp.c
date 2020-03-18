@@ -1,5 +1,5 @@
 
-
+#include <math.h>
 #include "kernel_types.h"
 #include "thread.h"
 #include "utlist.h"
@@ -32,6 +32,7 @@ static void _send(struct actual_bundle *bundle);
 static void _send_packet(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void *args);
 static void print_potential_neighbor_list(struct neighbor_t* neighbors);
+static int calculate_size_of_num(int num);
 
 kernel_pid_t gnrc_bp_init(void)
 {
@@ -112,7 +113,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
           delete_bundle(bundle);
         }
         else {
-          send_ack();
+          send_ack(bundle);
           delete_bundle(bundle);
         }
       } /*Bundle not for this node, forward received bundle*/
@@ -345,6 +346,39 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
     return ;
 }
 
-void send_ack(void) {
+void send_ack(struct actual_bundle *bundle) {
+  int lifetime = 1;
+  struct actual_bundle *ack_bundle;
+  uint64_t payload_flag;
+  uint8_t *payload_data;
+  size_t data_len;
+  char buf_src[calculate_size_of_num(bundle->primary_block.src_num)], buf_report[calculate_size_of_num(bundle->primary_block.report_num)], buf_service[calculate_size_of_num(bundle->primary_block.service_num)];
 
+  data_len = 0;
+  payload_data = (uint8_t*)malloc(data_len);
+  payload_data = NULL;
+
+  if (calculate_payload_flag(&payload_flag, false) < 0) {
+    printf("Error creating payload flag.\n");
+    return;
+  }
+
+  sprintf(buf_src, "%lu", bundle->primary_block.src_num);
+  sprintf(buf_report, "%lu", bundle->primary_block.report_num);
+  sprintf(buf_service, "%lu", bundle->primary_block.service_num);
+
+  ack_bundle = create_bundle();
+  fill_bundle(ack_bundle, 7, IPN, buf_src, buf_report, lifetime, bundle->primary_block.crc_type, buf_service);
+  bundle_add_block(ack_bundle, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);
+
+  if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, ack_bundle, GNRC_NETAPI_MSG_TYPE_SND)) {
+    printf("Unable to find BP thread.\n");
+    // gnrc_pktbuf_release(pkt);
+    delete_bundle(ack_bundle);
+    return ;
+  }
+}
+
+static int calculate_size_of_num(int num) {
+  return (int)((ceil(log10(num))+1)*sizeof(char));
 }

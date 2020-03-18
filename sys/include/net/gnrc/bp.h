@@ -30,7 +30,7 @@ kernel_pid_t gnrc_bp_init(void);
 int gnrc_bp_dispatch(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bundle *bundle, uint16_t cmd);
 
 void send_bundles_to_new_neighbor (struct neighbor_t *neighbor);
-void send_ack(void);
+void send_ack(struct actual_bundle *bundle);
 
 #ifdef __cplusplus
 }
