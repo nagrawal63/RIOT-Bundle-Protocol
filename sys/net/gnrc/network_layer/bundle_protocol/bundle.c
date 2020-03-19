@@ -567,8 +567,11 @@ int bundle_decode(struct actual_bundle* bundle, uint8_t *buffer, size_t buf_len)
   nanocbor_leave_container(&decoder, &arr);
   // DEBUG("value of src num: %lu.\n", bundle->primary_block.src_num);
   //decoding and parsing other canonical blocks
-  while(!(*decoder.cur == 0xFF && *(decoder.cur+1) == 0x00) && bundle->num_of_blocks < MAX_NUM_OF_BLOCKS){
-    DEBUG("bundle: Inside decoding of canonical block and currently scanning %02x.\n", *decoder.cur);
+
+  while(!(*decoder.cur == 0xFF && (buffer+buf_len-1) == decoder.cur) && bundle->num_of_blocks < MAX_NUM_OF_BLOCKS){
+    // int diff = (buffer-decoder.cur);
+    // DEBUG("bundle: pointer to buf_end is: %p and decoder is currently at %p.\n", (buffer+buf_len-1), decoder.cur);
+    // DEBUG("bundle: Inside decoding of canonical block and currently scanning %02x.\n", *decoder.cur);
     //TODO: Think of solution to prevent too much use of malloc everywhere(so that keeping track of memory becomes easier)
     struct bundle_canonical_block_t* block = &bundle->other_blocks[bundle->num_of_blocks];
     nanocbor_value_t arr;

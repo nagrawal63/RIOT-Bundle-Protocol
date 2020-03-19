@@ -8,16 +8,17 @@
 #include "xtimer.h"
 
 #include "net/gnrc/bundle_protocol/contact_manager_config.h"
+#include "net/gnrc/bundle_protocol/contact_scheduler_periodic.h"
 #include "net/gnrc/ipv6/nib/conf.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define NEIGHBOR_PURGE_TIMER_SECONDS 20
+#ifdef MODULE_GNRC_CONTACT_SCHEDULER_PERIODIC
+#define NEIGHBOR_PURGE_TIMER_SECONDS (2*CONTACT_PERIOD_SECONDS)
+#endif
 
-//Don't implement linked list stuff for this. Rather directly use
-//inbuilt LL stuff of RIOT
 struct neighbor_t{
   uint8_t endpoint_scheme;
   uint32_t endpoint_num;

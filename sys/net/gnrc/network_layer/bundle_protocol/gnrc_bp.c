@@ -15,6 +15,8 @@
 #define ENABLE_DEBUG    (1)
 #include "debug.h"
 
+#include "od.h"
+
 static kernel_pid_t _pid = KERNEL_PID_UNDEF;
 
 //Hardcoded right now, find a way to change this soon
@@ -32,7 +34,7 @@ static void _send(struct actual_bundle *bundle);
 static void _send_packet(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void *args);
 static void print_potential_neighbor_list(struct neighbor_t* neighbors);
-static int calculate_size_of_num(int num);
+static int calculate_size_of_num(uint32_t num);
 
 kernel_pid_t gnrc_bp_init(void)
 {
@@ -105,15 +107,25 @@ static void _receive(gnrc_pktsnip_t *pkt)
     }
   #endif
     else {
-      DEBUG("bp: Not a discovery packet!!!!!!!!!!!!!!!!!!\n");
+      DEBUG("bp: Not a discovery packet with destination: %lu, source: %lu and current address: %lu !!!!!!!!!!!!!!!!!!\n", bundle->primary_block.dst_num, bundle->primary_block.src_num, (uint32_t)atoi(get_src_num()));
+      DEBUG("bp: ***********Data in bundle.****************\n");
+      od_hex_dump(bundle_get_payload_block(bundle)->block_data, bundle_get_payload_block(bundle)->data_len, OD_WIDTH_DEFAULT);
       /* This bundle is for the current node, send to application that sent it*/
       if (bundle->primary_block.dst_num == (uint32_t)atoi(get_src_num())) {
+        DEBUG("bp: Delivering bundle to application layer.\n ");
+        int res = strcmp((char*)bundle_get_payload_block(bundle)->block_data, "ack");
+        DEBUG("bp: res on comparision of %s and %s:%d.\n", bundle_get_payload_block(bundle)->block_data, "ack", res);
         if (!gnrc_bp_dispatch(GNRC_NETTYPE_BP, bundle->primary_block.service_num, bundle, GNRC_NETAPI_MSG_TYPE_RCV)) {
           DEBUG("bp: Couldn't send bundle to registered receivers.\n");
           delete_bundle(bundle);
         }
-        else {
+        else if (memcmp(bundle_get_payload_block(bundle)->block_data, "ack", sizeof("ack")) != 0){
+          DEBUG("bp: Will send ack.\n");
           send_ack(bundle);
+          delete_bundle(bundle);
+        }
+        else {
+          DEBUG("bp: ack received.\n");
           delete_bundle(bundle);
         }
       } /*Bundle not for this node, forward received bundle*/
@@ -296,7 +308,7 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
     struct bundle_list *bundle_store_list, *temp_bundle;
 
     // netif = gnrc_netif_get_by_pid(iface);
-    DEBUG("bp: Sending bundle to new neighbor on hardcoded interface %d.\n", iface);
+    // DEBUG("bp: Sending bundle to new neighbor on hardcoded interface %d.\n", iface);
 
     bundle_store_list = get_bundle_list();
     print_bundle_storage();
@@ -347,38 +359,55 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
 }
 
 void send_ack(struct actual_bundle *bundle) {
+  // DEBUG("bp: Inside send ack function.\n");
   int lifetime = 1;
   struct actual_bundle *ack_bundle;
   uint64_t payload_flag;
   uint8_t *payload_data;
-  size_t data_len;
-  char buf_src[calculate_size_of_num(bundle->primary_block.src_num)], buf_report[calculate_size_of_num(bundle->primary_block.report_num)], buf_service[calculate_size_of_num(bundle->primary_block.service_num)];
+  size_t data_len, dst_len, report_len, service_len;
+  // DEBUG("bp: dst_num = %lu, report_num = %lu, service_num = %lu.\n", bundle->primary_block.src_num, bundle->primary_block.report_num, bundle->primary_block.service_num);
+  // DEBUG("bp: will start calculting dst_len.\n");
+  dst_len = calculate_size_of_num(bundle->primary_block.src_num);
+  // DEBUG("bp: dst_len = %u\n", dst_len); 
+  report_len = calculate_size_of_num(bundle->primary_block.report_num);
+  // DEBUG("bp: report_len = %u.\n", report_len);
+  service_len = calculate_size_of_num(bundle->primary_block.service_num);
+  // DEBUG("bp: service_len = %u.\n", service_len);
 
-  data_len = 0;
+  char buf_dst[dst_len], buf_report[report_len], buf_service[service_len];
+
+  data_len = 4;
   payload_data = (uint8_t*)malloc(data_len);
-  payload_data = NULL;
+  payload_data = (uint8_t*)"ack";
 
   if (calculate_payload_flag(&payload_flag, false) < 0) {
     printf("Error creating payload flag.\n");
     return;
   }
-
-  sprintf(buf_src, "%lu", bundle->primary_block.src_num);
+  DEBUG("bp: sprinting for ackssssss.\n");  
+  // sscanf(buf_dst, "%lu", &bundle->primary_block.src_num);
+  sprintf(buf_dst, "%lu", bundle->primary_block.src_num);
   sprintf(buf_report, "%lu", bundle->primary_block.report_num);
   sprintf(buf_service, "%lu", bundle->primary_block.service_num);
-
+  // DEBUG("bp: sprinted values: %s, %s, %s; actual nums: %lu, %lu, %lu.\n", buf_dst, buf_report, buf_service, bundle->primary_block.src_num, bundle->primary_block.report_num, bundle->primary_block.service_num);
+  // DEBUG("bp: Creating bundle for ack");
   ack_bundle = create_bundle();
-  fill_bundle(ack_bundle, 7, IPN, buf_src, buf_report, lifetime, bundle->primary_block.crc_type, buf_service);
+  fill_bundle(ack_bundle, 7, IPN, buf_dst, buf_report, lifetime, bundle->primary_block.crc_type, buf_service);
   bundle_add_block(ack_bundle, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);
 
   if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, ack_bundle, GNRC_NETAPI_MSG_TYPE_SND)) {
     printf("Unable to find BP thread.\n");
     // gnrc_pktbuf_release(pkt);
-    delete_bundle(ack_bundle);
     return ;
   }
+  delete_bundle(ack_bundle);  
 }
 
-static int calculate_size_of_num(int num) {
-  return (int)((ceil(log10(num))+1)*sizeof(char));
+static int calculate_size_of_num(uint32_t num) {
+  if(num == 0) {
+    return 0;
+  }
+  int a = ((ceil(log10(num))+1)*sizeof(char)); 
+  // DEBUG("bp:size = %d.\n",a );
+  return a;
 }

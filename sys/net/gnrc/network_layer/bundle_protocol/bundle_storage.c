@@ -77,6 +77,8 @@ bool delete_bundle(struct actual_bundle* bundle)
   if(head_of_store == NULL){
     head_of_store = free_list;
   }
+  DEBUG("bundle_storage: Printing bundle storage after deleting.\n");
+  print_bundle_storage();
   return true;
 }
 
@@ -87,8 +89,8 @@ uint8_t get_next_block_number(void)
 
 struct bundle_list* get_previous_bundle_in_list(struct actual_bundle* bundle)
 {
-    DEBUG("bundle_storage: Inside get previous bundle.\n");
-    print_bundle_storage();
+    // DEBUG("bundle_storage: Inside get previous bundle.\n");
+    // print_bundle_storage();
     struct bundle_list* temp = head_of_store;
     if(is_same_bundle(&(temp->current_bundle), bundle)){
       DEBUG("bundle_storage: To delete first bundle.\n");
