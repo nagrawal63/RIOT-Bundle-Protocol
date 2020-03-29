@@ -17,6 +17,8 @@ extern "C" {
 
 #ifdef MODULE_GNRC_CONTACT_SCHEDULER_PERIODIC
 #define NEIGHBOR_PURGE_TIMER_SECONDS (2*CONTACT_PERIOD_SECONDS)
+#elif
+#define NEIGHBOR_PURGE_TIMER_SECONDS (40) 	//Dummy value for now 
 #endif
 
 struct neighbor_t{

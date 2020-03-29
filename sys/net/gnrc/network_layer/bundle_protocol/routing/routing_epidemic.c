@@ -16,13 +16,14 @@ void routing_epidemic_init(void) {
 	DEBUG("routing_epidemic: Initializing epidemic routing.\n");
 	this_router = (struct router*)malloc(sizeof(struct router));
 	this_router->route_receivers = route_receivers;
+	this_router->received_ack = received_ack;
 }
 
 //Implemented assuming endpoint_scheme is IPN
 struct neighbor_t *route_receivers(uint32_t dst_num) {
 	struct neighbor_t *temp;
 	struct neighbor_t *head_of_neighbors = get_neighbor_list();
-	// LL_SEARCH(head_of_neighbors, temp, , comparator);
+	
 	LL_SEARCH_SCALAR(head_of_neighbors, temp, endpoint_num, dst_num);
 
 	if(!temp) {
@@ -31,6 +32,13 @@ struct neighbor_t *route_receivers(uint32_t dst_num) {
 	else {
 		return temp;
 	}
+}
+
+void received_ack(struct actual_bundle *bundle, uint32_t source) {
+	(void) bundle;
+	(void) source;
+	DEBUG("routing_epidemic: Inside processing received acknowledgement.\n");
+	return;
 }
 
 // struct router* get_router(void) {

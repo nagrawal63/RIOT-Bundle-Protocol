@@ -10,6 +10,7 @@
 
 #include "nanocbor/nanocbor.h"
 #include "fmt.h"
+#include "xtimer.h"
 
 #define DUMMY_EID "test"
 #define DUMMY_SRC_NUM "40"
@@ -116,6 +117,7 @@ struct actual_bundle{
   struct bundle_primary_block_t primary_block;
   struct bundle_canonical_block_t other_blocks[MAX_NUM_OF_BLOCKS];
   int num_of_blocks;
+  uint32_t local_creation_time;
 };
 
 // void insert_block_in_bundle(struct actual_bundle* bundle, struct bundle_canonical_block_t* block);
@@ -123,7 +125,7 @@ bool is_same_bundle(struct actual_bundle* current_bundle, struct actual_bundle* 
 uint16_t calculate_crc_16(uint8_t type);
 uint32_t calculate_crc_32(uint8_t type);
 void calculate_primary_flag(uint64_t *flag, bool is_fragment, bool dont_fragment);
-int calculate_payload_flag(uint64_t *flag, bool replicate_block);
+int calculate_canonical_flag(uint64_t *flag, bool replicate_block);
 
 struct actual_bundle* create_bundle(void);
 void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dest_eid, char* report_eid, int lifetime, int crc_type, char* service_num);

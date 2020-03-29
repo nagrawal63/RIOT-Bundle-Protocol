@@ -53,6 +53,7 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
   gnrc_netif_t *netif = NULL;
   netif = gnrc_netif_get_by_pid(iface);
 
+  // Preparing the payload block
   data_len = netif->l2addr_len + 1;
   payload_data = (uint8_t*)malloc(data_len);
   payload_data = netif->l2addr;
@@ -62,12 +63,11 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
     printf("%02x",payload_data[i]);
   }
   printf(".\n");
-  if (calculate_payload_flag(&payload_flag, false) < 0) {
+  if (calculate_canonical_flag(&payload_flag, false) < 0) {
     printf("Error creating payload flag.\n");
     return;
   }
-  // print_u64_dec(payload_flag);
-  // struct actual_bundle *bundle1, *bundle2, *bundle3 ;
+
   struct actual_bundle *bundle1;
   if((bundle1= create_bundle()) == NULL){
     printf("Could not create bundle.\n");
@@ -77,25 +77,23 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
   fill_bundle(bundle1, 7, IPN, dtn_dst, "123", 1, NOCRC, "1");
   // printf("primary block of bundle filled.\n");
   bundle_add_block(bundle1, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);
-  // printf("Adding block completed.\n");
-  // printf("bundle: Set version to %d.\n",bundle1->primary_block.version);
-
-  // print_bundle(bundle1);
   
-  // if((bundle2 = create_bundle()) == NULL){
-  //   printf("Could not create bundle.\n");
-  //   return;
-  // }
-  // fill_bundle(bundle2, 7, DTN, dtn_dst, NULL, 1, NOCRC);
-  // print_bundle_storage();
-  // if((bundle3= create_bundle()) == NULL){
-  //   printf("Could not create bundle.\n");
-  //   return;
-  // }
-  // fill_bundle(bundle3, 7, DTN, dtn_dst, NULL, 1, NOCRC);
-  // print_bundle_storage();
-  // delete_bundle(bundle1);
-  // print_bundle_storage();
+  /* Creating bundle age block*/
+  size_t bundle_age_len;
+  uint8_t *bundle_age_data;
+  uint64_t bundle_age_flag;
+
+  if (calculate_canonical_flag(&bundle_age_flag, false) < 0) {
+    printf("Error creating payload flag.\n");
+    return ;
+  }
+
+  uint32_t initial_bundle_age = 0;
+  bundle_age_len = 1;
+  bundle_age_data = malloc(bundle_age_len * sizeof(char));
+  sprintf((char*)bundle_age_data, "%lu", initial_bundle_age);
+
+  bundle_add_block(bundle1, BUNDLE_BLOCK_TYPE_BUNDLE_AGE, bundle_age_flag, bundle_age_data, NOCRC, bundle_age_len);
 
   //Bundle getting encoded
   // nanocbor_encoder_t enc;

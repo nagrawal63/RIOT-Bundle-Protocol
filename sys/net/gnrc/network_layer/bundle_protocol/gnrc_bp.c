@@ -9,6 +9,7 @@
 #include "net/gnrc.h"
 #include "net/gnrc/pktbuf.h"
 #include "net/gnrc/bundle_protocol/config.h"
+#include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/gnrc/bundle_protocol/routing.h"
 
@@ -66,7 +67,7 @@ int gnrc_bp_dispatch(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bund
     /* send message */
     int ret = msg_try_send(&msg, sendto->target.pid);
     if (ret < 1) {
-        DEBUG("gnrc_bp: dropped message to %" PRIkernel_pid " (%s)\n", sendto->target.pid,
+        DEBUG("bp: dropped message to %" PRIkernel_pid " (%s)\n", sendto->target.pid,
               (ret == 0) ? "receiver queue is full" : "invalid receiver");
     }
     return ret;
@@ -75,12 +76,27 @@ int gnrc_bp_dispatch(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bund
 }
 
 void process_bundle_before_forwarding(struct actual_bundle *bundle) {
+  DEBUG("bp: Processing bundle before forwarding.\n");
   (void) bundle;
+
+  /*Processing bundle and updating its bundle age block*/
+  struct bundle_canonical_block_t *bundle_age_block = get_block_by_type(bundle, BUNDLE_BLOCK_TYPE_BUNDLE_AGE);
+
+  if (bundle_age_block != NULL) {
+    DEBUG("bp: found bundle age block in bundle.\n");
+    uint32_t usecs_from_bundle = atoi((char*)bundle_age_block->block_data);
+    uint32_t updated_time = usecs_from_bundle+(xtimer_now().ticks32-bundle->local_creation_time);
+    sprintf((char*)bundle_age_block->block_data, "%lu", updated_time);
+  }
 }
 
 static void _receive(gnrc_pktsnip_t *pkt)
 {
     DEBUG("bp: Receive type: %d with length: %d and data: %s\n",pkt->type, pkt->size, (uint8_t*)pkt->data);
+    struct router *cur_router;
+
+    cur_router = get_router();
+
     if(pkt->data == NULL) {
       DEBUG("bp: No data in packet, dropping it.\n");
       gnrc_pktbuf_release(pkt);
@@ -93,8 +109,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
       delete_bundle(bundle);
       return ;
     }
-    // DEBUG("bp: Printing received packet!!!!!!!!!!!!!!!!!!!!.\n");
-    // print_bundle(bundle);
+    DEBUG("bp: Printing received packet!!!!!!!!!!!!!!!!!!!!.\n");
+    print_bundle(bundle);
     DEBUG("bp: will send packet to upper layer.\n");
   #ifdef MODULE_GNRC_CONTACT_MANAGER
     if (bundle->primary_block.service_num  == (uint32_t)atoi(CONTACT_MANAGER_SERVICE_NUM)) {
@@ -126,6 +142,9 @@ static void _receive(gnrc_pktsnip_t *pkt)
         }
         else {
           DEBUG("bp: ack received.\n");
+          //Function to be implemented as a part of routing module
+          cur_router->received_ack(bundle, bundle->primary_block.src_num);
+          //update_ack_for_bundle(bundle);
           delete_bundle(bundle);
         }
       } /*Bundle not for this node, forward received bundle*/
@@ -380,7 +399,7 @@ void send_ack(struct actual_bundle *bundle) {
   payload_data = (uint8_t*)malloc(data_len);
   payload_data = (uint8_t*)"ack";
 
-  if (calculate_payload_flag(&payload_flag, false) < 0) {
+  if (calculate_canonical_flag(&payload_flag, false) < 0) {
     printf("Error creating payload flag.\n");
     return;
   }

@@ -74,7 +74,7 @@ int send(char *addr_str, int data, int iface)
   payload_data = (uint8_t*)malloc(data_len);
   memcpy(payload_data, netif->l2addr, data_len);
   DEBUG("contact_scheduler: payload_data -> %s with length %u.\n", gnrc_netif_addr_to_str(payload_data,data_len, hdr_addr_str), data_len);
-  if (calculate_payload_flag(&payload_flag, false) < 0) {
+  if (calculate_canonical_flag(&payload_flag, false) < 0) {
     DEBUG("contact_scheduler: Error making discovery payload flag.\n");
     return ERROR;
   }

@@ -6,6 +6,8 @@
 #define ENABLE_DEBUG (1)
 #include "debug.h"
 
+static uint8_t sequence_num = 0;
+
 // Assuming the endpoint_scheme is the same for the src, dest and report nodes
 static bool is_fragment_bundle(struct actual_bundle* bundle);
 static int decode_primary_block_element(nanocbor_value_t *decoder, struct actual_bundle* bundle, uint8_t element);
@@ -490,7 +492,8 @@ static int decode_canonical_block_element(nanocbor_value_t* decoder, struct bund
         const uint8_t *buf = NULL;
         if(nanocbor_get_bstr(decoder, &buf, &len) >= 0 && buf) {
           block->data_len = len;
-          memcpy(block->block_data, buf, len);
+          // memcpy(block->block_data, buf, len);
+          sprintf((char*)block->block_data, "%s", buf);
           return 0;
         }
         else {
@@ -651,7 +654,7 @@ void calculate_primary_flag(uint64_t *flag, bool is_fragment, bool dont_fragment
 }
 
 //TODO: Implement block flag thing
-int calculate_payload_flag(uint64_t *flag, bool replicate_block)
+int calculate_canonical_flag(uint64_t *flag, bool replicate_block)
 {
   (void) replicate_block;
   *flag = 0;
@@ -666,6 +669,7 @@ struct actual_bundle* create_bundle(void)
     return NULL;
   }
   bundle->num_of_blocks=0;
+  bundle->local_creation_time = xtimer_usec_from_ticks(xtimer_now());
   // bundle->other_blocks=NULL;
   return bundle;
 }
@@ -675,7 +679,7 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
 {
   // TODO: Change later
   int zero_val = 0;
-  uint32_t zero_arr[2] = {0};
+  uint32_t creation_timestamp_arr[2] = {0, sequence_num++};
 
   //Local vars
   uint64_t primary_flag = 0;
@@ -754,7 +758,7 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
   // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
 
   if(!check_if_node_has_clock()){
-    if(!bundle_set_attribute(bundle, CREATION_TIMESTAMP, zero_arr)){
+    if(!bundle_set_attribute(bundle, CREATION_TIMESTAMP, creation_timestamp_arr)){
       DEBUG("bundle: Could not set bundle creation time.\n");
       return ;
     }
@@ -825,8 +829,9 @@ struct bundle_canonical_block_t* get_block_by_type(struct actual_bundle* bundle,
 {
   struct bundle_canonical_block_t* temp = bundle->other_blocks;
   int i = 0;
-  while(temp != NULL){
+  while(temp != NULL && i < bundle->num_of_blocks && i < MAX_NUM_OF_BLOCKS ){
     temp = &bundle->other_blocks[i];
+    DEBUG("bundle: Going to compare block of type: %d with %d.\n", temp->type, block_type);
     if(temp->type == block_type){
       return temp;
     }
@@ -1088,8 +1093,9 @@ void print_bundle(struct actual_bundle* bundle)
   struct bundle_canonical_block_t *temp = bundle->other_blocks;
   int i = 0;
   while (i < bundle->num_of_blocks) {
-    DEBUG("Bundle canonical block of type: %d with data: ", temp[i].type);
+    DEBUG("Bundle canonical block of type: %d with data_len: %u and data: \n", temp[i].type, temp[i].data_len);
     od_hex_dump(temp[i].block_data, temp[i].data_len, OD_WIDTH_DEFAULT);
+
     i++;
   }
   DEBUG("Finished printing bundle.\n");

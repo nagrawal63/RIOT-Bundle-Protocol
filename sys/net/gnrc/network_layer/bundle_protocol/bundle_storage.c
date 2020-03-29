@@ -1,4 +1,5 @@
 #include "random.h"
+#include "utlist.h"
 
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
@@ -35,7 +36,13 @@ struct actual_bundle* get_space_for_bundle(void)
 {
   struct bundle_list *ret = NULL;
   if(free_list == NULL){
-    DEBUG("bundle_storage: Free list is NULL.\n");
+    DEBUG("bundle_storage: Bundle storage is full, deleting oldest bundle.\n");
+    print_bundle_storage();
+    struct bundle_list *oldest_bundle = find_oldest_bundle_to_purge();
+    if(delete_bundle(&oldest_bundle->current_bundle)) {
+      DEBUG("bundle_storage: deleted oldest bundle .\n");
+      return get_space_for_bundle();
+    }
     return NULL;
   }
   ret = free_list;
@@ -58,7 +65,7 @@ struct actual_bundle* get_space_for_bundle(void)
 bool delete_bundle(struct actual_bundle* bundle)
 {
 
-  DEBUG("bundle_storage: Inside delete bundle.\n");
+  DEBUG("bundle_storage: Deleting bundle created at %lu.\n", bundle->local_creation_time);
   struct bundle_list* previous_of_to_delete_node = get_previous_bundle_in_list(bundle);
   struct bundle_list* to_delete_node = NULL;
 
@@ -78,6 +85,7 @@ bool delete_bundle(struct actual_bundle* bundle)
     head_of_store = free_list;
   }
   DEBUG("bundle_storage: Printing bundle storage after deleting.\n");
+  memset(&to_delete_node->unique_id, 0, sizeof(uint32_t));
   print_bundle_storage();
   return true;
 }
@@ -122,7 +130,7 @@ void print_bundle_storage(void)
   DEBUG("bundle_storage: Printing bundle storage list.\n");
   struct bundle_list* temp = head_of_store;
   while(temp!=NULL){
-    DEBUG("%ld->", temp->unique_id);
+    DEBUG("(%ld, %lu)->", temp->unique_id, temp->current_bundle.local_creation_time);
     temp = temp->next;
   }
   DEBUG("NULL.\n");
@@ -131,4 +139,17 @@ void print_bundle_storage(void)
 
 struct bundle_list *get_bundle_list(void) {
   return head_of_store;
+}
+
+struct bundle_list *find_oldest_bundle_to_purge(void) {
+  struct bundle_list *temp, *oldest_bundle = NULL;
+  uint32_t oldest_time = UINT32_MAX;
+  LL_FOREACH(head_of_store, temp) {
+    if (temp->current_bundle.local_creation_time < oldest_time) {
+      oldest_time = temp->current_bundle.local_creation_time;
+      oldest_bundle = temp;
+    }
+  }
+  DEBUG("bundle_storage: Will delete bundle with creation time:%lu.\n", oldest_bundle->current_bundle.local_creation_time);
+  return oldest_bundle;
 }

@@ -6,6 +6,7 @@
 
 void routing_epidemic_init(void);
 struct neighbor_t *route_receivers(uint32_t dst_num);
+void received_ack(struct actual_bundle *bundle, uint32_t source);
 // struct router* get_router(void);
 
 #endif

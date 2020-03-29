@@ -96,8 +96,11 @@ static void _receive(struct actual_bundle *bundle)
   if(!temp) {
     DEBUG("contact_manager: Adding neighbor.\n");
     LL_APPEND(head_of_neighbors, neighbor);
+    
+#ifdef ROUTING_EPIDEMIC
     DEBUG("contact_manager:Sending bundles in store to this new neighbor.\n");
     send_bundles_to_new_neighbor(neighbor);
+#endif
   }
   else {
     xtimer_remove(&temp->expiry_timer);
