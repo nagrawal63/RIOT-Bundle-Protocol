@@ -1061,6 +1061,7 @@ uint8_t bundle_set_attribute(struct actual_bundle* bundle, uint8_t type, void* v
 void print_bundle(struct actual_bundle* bundle)
 {
   (void) bundle;
+  DEBUG("Printing bundle created at %lu.\n", bundle->local_creation_time);
   DEBUG("Printing primary block of bundle.\n");
   DEBUG("Bundle primary block version: %d\n", bundle->primary_block.version);
   DEBUG("Bundle primary block flags:");
@@ -1107,7 +1108,7 @@ int increment_bundle_age(struct bundle_canonical_block_t *bundle_age_block, stru
   uint32_t updated_time = usecs_from_bundle+(xtimer_now().ticks32-bundle->local_creation_time);
   if(updated_time > bundle->primary_block.lifetime) {
     DEBUG("bundle: lifetime of bundle expired");
-    delete_bundle(bundle);
+    // delete_bundle(bundle);
     return ERROR;
   }
   sprintf((char*)bundle_age_block->block_data, "%lu", updated_time);

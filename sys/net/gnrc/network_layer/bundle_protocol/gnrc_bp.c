@@ -34,6 +34,7 @@ static void _receive(gnrc_pktsnip_t *pkt);
 static void _send(struct actual_bundle *bundle);
 static void _send_packet(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void *args);
+static void retransmit_timer_callback(void *args);
 static void print_potential_neighbor_list(struct neighbor_t* neighbors);
 static int calculate_size_of_num(uint32_t num);
 
@@ -323,6 +324,7 @@ static void _send_packet(gnrc_pktsnip_t *pkt)
 static void *_event_loop(void *args)
 {
   msg_t msg, msg_q[GNRC_BP_MSG_QUEUE_SIZE];
+  xtimer_t *timer = malloc(sizeof(xtimer_t));
 
   gnrc_netreg_entry_t me_reg = GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL, sched_active_pid);
   (void)args;
@@ -330,6 +332,11 @@ static void *_event_loop(void *args)
   msg_init_queue(msg_q, GNRC_BP_MSG_QUEUE_SIZE);
 
   gnrc_netreg_register(GNRC_NETTYPE_BP, &me_reg);
+
+  timer->callback = &retransmit_timer_callback;
+  timer->arg = timer;
+  // xtimer_set(timer, xtimer_ticks_from_usec(RETRANSMIT_TIMER_SECONDS).ticks32);
+
   while(1){
     DEBUG("bp: waiting for incoming message.\n");
     msg_receive(&msg);
@@ -354,6 +361,20 @@ static void *_event_loop(void *args)
   return NULL;
 }
 
+static void retransmit_timer_callback(void *args) {
+  (void) args;
+  struct bundle_list *bundle_storage_list = get_bundle_list(), *temp;
+  LL_FOREACH(bundle_storage_list, temp) {
+    if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, &temp->current_bundle, GNRC_NETAPI_MSG_TYPE_SND)) {
+      printf("Unable to find BP thread.\n");
+      // gnrc_pktbuf_release(pkt);
+      // delete_bundle(bundle1);
+      return ;
+    }
+  }
+  xtimer_set(args, xtimer_ticks_from_usec(RETRANSMIT_TIMER_SECONDS).ticks32);
+}
+
 static void print_potential_neighbor_list(struct neighbor_t* neighbors) {
   char addr_str[GNRC_NETIF_HDR_L2ADDR_PRINT_LEN];
   struct neighbor_t *temp;
@@ -370,7 +391,11 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
 
     bundle_store_list = get_bundle_list();
     print_bundle_storage();
-    LL_FOREACH(bundle_store_list, temp_bundle){
+    temp_bundle = bundle_store_list;
+    while(temp_bundle != NULL) {
+    // LL_FOREACH(bundle_store_list, temp_bundle){
+      print_bundle_storage();
+      DEBUG("bp: Sending this bundle to new neighbor with destination: %lu and local_creation_time: %lu.\n", temp_bundle->current_bundle.primary_block.dst_num, temp_bundle->current_bundle.local_creation_time);
       if(temp_bundle->current_bundle.primary_block.dst_num != (uint32_t)atoi(BROADCAST_EID)) {
 
         gnrc_netif_t *netif = NULL;
@@ -379,13 +404,14 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
 
         netif = gnrc_netif_get_by_pid(iface);
 
-        DEBUG("bp: Sending this bundle to new neighbor.\n");
-
         struct bundle_canonical_block_t *bundle_age_block = get_block_by_type(&temp_bundle->current_bundle, BUNDLE_BLOCK_TYPE_BUNDLE_AGE);
         if(bundle_age_block != NULL) {
           original_bundle_age = atoi((char*)bundle_age_block->block_data);
           if(increment_bundle_age(bundle_age_block, &temp_bundle->current_bundle) < 0) {
             DEBUG("bp: Error updating bundle age.\n");
+            struct bundle_list *next_bundle = temp_bundle->next;
+            delete_bundle(&temp_bundle->current_bundle);
+            temp_bundle = next_bundle;
             continue;
           }
         }
@@ -431,6 +457,7 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
           }
         }
       }
+      temp_bundle = temp_bundle->next;
     }
     return ;
 }

@@ -88,7 +88,7 @@ static void _receive(struct actual_bundle *bundle)
   neighbor->l2addr_len = payload_block->data_len;
   
   create_neighbor_expiry_timer(neighbor);
-  xtimer_set(&neighbor->expiry_timer, xtimer_ticks_from_usec(NEIGHBOR_PURGE_TIMER_SECONDS*1000000).ticks32);
+  xtimer_set(&neighbor->expiry_timer, xtimer_ticks_from_usec(NEIGHBOR_PURGE_TIMER_SECONDS*SECS_TO_MICROSECS).ticks32);
 
   /* Adding neighbor in front of neighbor list if not present in list*/
   struct neighbor_t *temp;
@@ -104,8 +104,9 @@ static void _receive(struct actual_bundle *bundle)
   }
   else {
     xtimer_remove(&temp->expiry_timer);
-    xtimer_set(&temp->expiry_timer, xtimer_ticks_from_usec(NEIGHBOR_PURGE_TIMER_SECONDS*1000000).ticks32);
+    xtimer_set(&temp->expiry_timer, xtimer_ticks_from_usec(NEIGHBOR_PURGE_TIMER_SECONDS*SECS_TO_MICROSECS).ticks32);
   }
+  DEBUG("contact_manager: Printing new updated neighbor list.\n");
   print_neighbor_list();
   delete_bundle(bundle);
   return ;
@@ -151,7 +152,6 @@ static void _send(gnrc_pktsnip_t *pkt)
     /*Setting netif to old value */
     gnrc_netif_hdr_set_netif(pkt->data, netif);
     gnrc_netapi_dispatch_send(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, pkt);
-    // gnrc_netapi_send(iface, pkt);
   }
 }
 
@@ -163,7 +163,7 @@ static void *_event_loop(void *args)
   (void)args;
 
   msg_init_queue(msg_q, GNRC_CONTACT_MANAGER_MSG_QUEUE_SIZE);
-
+  
   gnrc_netreg_register(GNRC_NETTYPE_CONTACT_MANAGER, &me_reg);
   while(1){
     DEBUG("contact_manager: waiting for incoming message.\n");

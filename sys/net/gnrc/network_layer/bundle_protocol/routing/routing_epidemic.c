@@ -14,11 +14,14 @@
 
 // struct router *this_router;
 
+static struct delivered_bundle_list *head_ptr = NULL;
+
 void routing_epidemic_init(void) {
 	DEBUG("routing_epidemic: Initializing epidemic routing.\n");
 	this_router = (struct router*)malloc(sizeof(struct router));
 	this_router->route_receivers = route_receivers;
 	this_router->received_ack = received_ack;
+	this_router->notify_bundle_deletion = notify_bundle_deletion;
 }
 
 //Implemented assuming endpoint_scheme is IPN
@@ -36,13 +39,44 @@ struct neighbor_t *route_receivers(uint32_t dst_num) {
 	}
 }
 
+void notify_bundle_deletion(struct actual_bundle *bundle) {
+	struct delivered_bundle_list *temp = NULL;
+	LL_FOREACH(head_ptr, temp) {
+		if (is_same_bundle(bundle, temp->bundle)) {
+			LL_DELETE(head_ptr, temp);
+		}
+	}
+	DEBUG("routing_epidemic: updated delivered ack list.\n");
+	print_delivered_bundle_list();
+	return ;
+}
+
 void received_ack(struct neighbor_t *src_neighbor, uint32_t creation_timestamp0, uint32_t creation_timestamp1) {
 	(void) src_neighbor;
 	(void) creation_timestamp0;
 	(void) creation_timestamp1;
 	DEBUG("routing_epidemic: Inside processing received acknowledgement.\n");
+	struct actual_bundle *bundle = get_bundle_from_list(creation_timestamp0, creation_timestamp1);
+	if (bundle == NULL) {
+		DEBUG("bp: could not find bundle in storage corresponding to which ack received.\n");
+		return ;
+	}
 
+	struct delivered_bundle_list *list_item = malloc(sizeof(struct delivered_bundle_list));
+	list_item->bundle = bundle;
+	list_item->neighbor = src_neighbor;
+	LL_APPEND(head_ptr, list_item);
+	print_delivered_bundle_list();
 	return;
+}
+
+void print_delivered_bundle_list (void) {
+	struct delivered_bundle_list *temp;
+	DEBUG("routing_epidemic: ");
+	LL_FOREACH(head_ptr, temp) {
+		DEBUG("(%lu, %lu)->", temp->bundle->local_creation_time, temp->neighbor->endpoint_num);
+	}
+	DEBUG("NULL.\n");
 }
 
 // struct router* get_router(void) {

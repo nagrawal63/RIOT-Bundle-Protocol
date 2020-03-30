@@ -41,6 +41,7 @@ struct actual_bundle* get_space_for_bundle(void)
     struct bundle_list *oldest_bundle = find_oldest_bundle_to_purge();
     if(delete_bundle(&oldest_bundle->current_bundle)) {
       DEBUG("bundle_storage: deleted oldest bundle .\n");
+      get_router()->notify_bundle_deletion(&oldest_bundle->current_bundle);
       return get_space_for_bundle();
     }
     return NULL;
@@ -85,7 +86,7 @@ bool delete_bundle(struct actual_bundle* bundle)
     head_of_store = free_list;
   }
   DEBUG("bundle_storage: Printing bundle storage after deleting.\n");
-  memset(&to_delete_node->unique_id, 0, sizeof(uint32_t));
+  // memset(&to_delete_node->unique_id, 0, sizeof(uint32_t));
   print_bundle_storage();
   return true;
 }
@@ -123,6 +124,25 @@ struct bundle_list* find_bundle_in_list ( struct actual_bundle* bundle)
       temp = temp->next;
     }
     return temp;
+}
+
+struct actual_bundle *get_bundle_from_list(uint32_t creation_timestamp0, uint32_t creation_timestamp1) 
+{
+  struct bundle_list *temp = NULL;
+  bool found = false;
+  LL_FOREACH(head_of_store, temp) {
+    if (temp->current_bundle.primary_block.creation_timestamp[0] == creation_timestamp0 
+        && temp->current_bundle.primary_block.creation_timestamp[1] == creation_timestamp1) {
+      found = true;
+      break;
+    }
+  }
+  if (found) {
+    return &temp->current_bundle;
+  }
+  else {
+    return NULL;
+  }
 }
 
 void print_bundle_storage(void)

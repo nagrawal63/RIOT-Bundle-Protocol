@@ -14,6 +14,8 @@
 extern "C" {
 #endif
 
+#define RETRANSMIT_TIMER_SECONDS (5000000)
+
 /**
  * @brief   Initialization of the BP thread.
  *
