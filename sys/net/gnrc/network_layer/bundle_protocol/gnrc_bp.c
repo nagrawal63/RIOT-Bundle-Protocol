@@ -75,7 +75,19 @@ int gnrc_bp_dispatch(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bund
   return ERROR;
 }
 
-void process_bundle_before_forwarding(struct actual_bundle *bundle) {
+bool check_lifetime_expiry(struct actual_bundle *bundle) {
+  struct bundle_canonical_block_t *bundle_age_block = get_block_by_type(bundle, BUNDLE_BLOCK_TYPE_BUNDLE_AGE);
+
+  if (bundle_age_block != NULL) {
+    if (bundle->primary_block.lifetime < atoi((char*)bundle_age_block->block_data)) {
+      delete_bundle(bundle);
+      return true;
+    }
+  }
+  return false;
+}
+
+int process_bundle_before_forwarding(struct actual_bundle *bundle) {
   DEBUG("bp: Processing bundle before forwarding.\n");
   (void) bundle;
 
@@ -84,10 +96,12 @@ void process_bundle_before_forwarding(struct actual_bundle *bundle) {
 
   if (bundle_age_block != NULL) {
     DEBUG("bp: found bundle age block in bundle.\n");
-    uint32_t usecs_from_bundle = atoi((char*)bundle_age_block->block_data);
-    uint32_t updated_time = usecs_from_bundle+(xtimer_now().ticks32-bundle->local_creation_time);
-    sprintf((char*)bundle_age_block->block_data, "%lu", updated_time);
+    if (increment_bundle_age(bundle_age_block, bundle) < 0) {
+      DEBUG("bp: Error updating bundle age block.\n");
+      return ERROR;
+    }
   }
+  return OK;
 }
 
 static void _receive(gnrc_pktsnip_t *pkt)
@@ -107,6 +121,10 @@ static void _receive(gnrc_pktsnip_t *pkt)
     if (bundle_decode(bundle, pkt->data, pkt->size) == ERROR) {
       DEBUG("bp: Packet received not for bundle protocol.\n");
       delete_bundle(bundle);
+      return ;
+    }
+    if (check_lifetime_expiry(bundle)) {
+      DEBUG("bp: received bundle's lifetime expired.\n");
       return ;
     }
     DEBUG("bp: Printing received packet!!!!!!!!!!!!!!!!!!!!.\n");
@@ -134,11 +152,11 @@ static void _receive(gnrc_pktsnip_t *pkt)
         if (!gnrc_bp_dispatch(GNRC_NETTYPE_BP, bundle->primary_block.service_num, bundle, GNRC_NETAPI_MSG_TYPE_RCV)) {
           DEBUG("bp: Couldn't send bundle to registered receivers.\n");
           delete_bundle(bundle);
-        }
+        } /*Bundle received is for this node but not of type acknowledgement*/
         else if (memcmp(bundle_get_payload_block(bundle)->block_data, "ack", sizeof("ack")) != 0){
           DEBUG("bp: Will send ack.\n");
-          send_ack(bundle);
-          delete_bundle(bundle);
+          // send_ack(bundle);
+          send_non_bundle_ack(bundle);
         }
         else {
           DEBUG("bp: ack received.\n");
@@ -153,6 +171,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
         nanocbor_encoder_t enc;
         gnrc_netif_t *netif = NULL;
         struct neighbor_t *temp;
+        bool sent = false;
 
         netif = gnrc_netif_get_by_pid(iface);
         DEBUG("bp: Sending bundle to hardcoded interface %d.\n", iface);
@@ -164,7 +183,9 @@ static void _receive(gnrc_pktsnip_t *pkt)
           return ;
         }
 
-        process_bundle_before_forwarding(bundle);
+        if(process_bundle_before_forwarding(bundle) < 0) {
+          return ;
+        }
 
         nanocbor_encoder_init(&enc, NULL, 0);
         bundle_encode(bundle, &enc);
@@ -180,7 +201,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
 
         gnrc_pktsnip_t *pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
         if (pkt == NULL) {
-          DEBUG("bp: unable to copy data to discovery packet buffer.\n");
+          DEBUG("bp: unable to copy data to packet buffer.\n");
           delete_bundle(bundle);
           free(buf);
           return ;
@@ -190,6 +211,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
         LL_FOREACH(neighbors_to_send, temp) {
           if (temp->endpoint_scheme == IPN && temp->endpoint_num != (uint32_t)atoi(get_src_num())) {
             DEBUG("bp:Forwarding packet to neighbor with eid %lu.\n", temp->endpoint_num);
+            sent = true;
             if (netif != NULL) {
               gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
               DEBUG("bp: netif hdr data is %s.\n",(char *)netif_hdr->data);
@@ -201,6 +223,9 @@ static void _receive(gnrc_pktsnip_t *pkt)
               gnrc_netapi_send(netif->pid, pkt);
             }
           }
+        }
+        if(!sent) {
+          free(buf);
         }
       }
     }
@@ -321,13 +346,8 @@ static void print_potential_neighbor_list(struct neighbor_t* neighbors) {
 }
 
 void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
-    
-    // struct neighbor_t *temp;
-    // DEBUG("bp: Send type: %d\n",bundle->primary_block.version);
+    DEBUG("bp: sending bundles to new neighbor.\n");
     struct bundle_list *bundle_store_list, *temp_bundle;
-
-    // netif = gnrc_netif_get_by_pid(iface);
-    // DEBUG("bp: Sending bundle to new neighbor on hardcoded interface %d.\n", iface);
 
     bundle_store_list = get_bundle_list();
     print_bundle_storage();
@@ -336,10 +356,21 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
 
         gnrc_netif_t *netif = NULL;
         nanocbor_encoder_t enc;
+        uint32_t original_bundle_age = 0;
 
         netif = gnrc_netif_get_by_pid(iface);
 
         DEBUG("bp: Sending this bundle to new neighbor.\n");
+
+        struct bundle_canonical_block_t *bundle_age_block = get_block_by_type(&temp_bundle->current_bundle, BUNDLE_BLOCK_TYPE_BUNDLE_AGE);
+        if(bundle_age_block != NULL) {
+          original_bundle_age = atoi((char*)bundle_age_block->block_data);
+          if(increment_bundle_age(bundle_age_block, &temp_bundle->current_bundle) < 0) {
+            DEBUG("bp: Error updating bundle age.\n");
+            continue;
+          }
+        }
+
         print_bundle(&temp_bundle->current_bundle);
 
         nanocbor_encoder_init(&enc, NULL, 0);
@@ -372,9 +403,45 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
           DEBUG("bp: Sending stored packet to process with pid %d.\n", netif->pid);
           gnrc_netapi_send(netif->pid, pkt);
         }
+        /*Will reset bundle age to original so that the bundle is identifiable 
+          with the orignal information for cross checking with data in the 
+          acknowledgement packet*/
+        if (original_bundle_age != 0) {
+          if (reset_bundle_age(bundle_age_block, original_bundle_age) < 0) {
+            DEBUG("bp: Error resetting bundle age to original.\n");
+          }
+        }
       }
     }
     return ;
+}
+
+void send_non_bundle_ack(struct actual_bundle *bundle) {
+
+  gnrc_netif_t *netif = NULL;
+  gnrc_pktsnip_t *ack_payload;
+  
+  char data[MAX_ACK_SIZE];
+  struct neighbor_t *neighbor_src;
+
+  netif = gnrc_netif_get_by_pid(iface);
+
+  sprintf(data, "ack_%lu_%lu", bundle->primary_block.creation_timestamp[0], bundle->primary_block.creation_timestamp[1]);
+
+  ack_payload = gnrc_pktbuf_add(NULL, data, strlen(data), GNRC_NETTYPE_UNDEF);
+
+  neighbor_src = get_neighbor_from_endpoint_num(bundle->primary_block.src_num);
+  if (netif != NULL) {
+      puts("Adding netif header");
+      gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, neighbor_src->l2addr, neighbor_src->l2addr_len);
+
+      gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
+      LL_PREPEND(ack_payload, netif_hdr);
+  }
+  if (netif->pid != 0) {
+    DEBUG("bp: Sending stored packet to process with pid %d.\n", netif->pid);
+    gnrc_netapi_send(netif->pid, ack_payload);
+  }
 }
 
 void send_ack(struct actual_bundle *bundle) {
@@ -430,3 +497,4 @@ static int calculate_size_of_num(uint32_t num) {
   // DEBUG("bp:size = %d.\n",a );
   return a;
 }
+

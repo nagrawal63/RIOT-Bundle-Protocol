@@ -1,3 +1,5 @@
+#ifndef _ROUTING_EPIDEMIC
+#define _ROUTING_EPIDEMIC
 #include "kernel_types.h"
 #include "thread.h"
 #include "utlist.h"
@@ -38,9 +40,12 @@ void received_ack(struct actual_bundle *bundle, uint32_t source) {
 	(void) bundle;
 	(void) source;
 	DEBUG("routing_epidemic: Inside processing received acknowledgement.\n");
+
 	return;
 }
 
 // struct router* get_router(void) {
 // 	return this_router;
 // }
+
+#endif

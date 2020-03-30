@@ -19,6 +19,7 @@
 #define CONTACT_MANAGER_SERVICE_NUM "12"
 
 #define ERROR -1
+#define OK 1
 
 //Codes to segregate between primary and canonical block
 #define BUNDLE_BLOCK_TYPE_PRIMARY 0x88
@@ -38,6 +39,8 @@
 #define FRAGMENT_IDENTIFICATION_MASK 0x0000000000000001
 
 #define BLOCK_DATA_BUF_SIZE 100
+#define MAX_ACK_SIZE 70
+#define DUMMY_PAYLOAD_LIFETIME 10000000
 
 #define MAX_NUM_OF_BLOCKS 3
 #define MAX_ENDPOINT_SIZE 32
@@ -142,6 +145,8 @@ uint8_t bundle_get_attribute(struct actual_bundle* bundle, uint8_t type, void* v
 uint8_t bundle_set_attribute(struct actual_bundle* bundle, uint8_t type, void* val);
 
 void print_bundle(struct actual_bundle* bundle);
+int increment_bundle_age(struct bundle_canonical_block_t *bundle_age_block, struct actual_bundle *bundle);
+int reset_bundle_age(struct bundle_canonical_block_t *bundle_age_block, uint32_t original_age);
 
 char *get_src_eid(void);
 char *get_src_num(void);

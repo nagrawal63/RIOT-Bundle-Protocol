@@ -74,7 +74,7 @@ static void send_bundle(char *dtn_dst, char *port_str, char *data)
     return;
   }
   print_bundle_storage();
-  fill_bundle(bundle1, 7, IPN, dtn_dst, "123", 1, NOCRC, "1");
+  fill_bundle(bundle1, 7, IPN, dtn_dst, "123", DUMMY_PAYLOAD_LIFETIME, NOCRC, "1");
   // printf("primary block of bundle filled.\n");
   bundle_add_block(bundle1, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);
   

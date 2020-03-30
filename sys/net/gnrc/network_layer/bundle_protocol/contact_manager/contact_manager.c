@@ -97,10 +97,10 @@ static void _receive(struct actual_bundle *bundle)
     DEBUG("contact_manager: Adding neighbor.\n");
     LL_APPEND(head_of_neighbors, neighbor);
     
-#ifdef ROUTING_EPIDEMIC
+// #ifdef ROUTING_EPIDEMIC
     DEBUG("contact_manager:Sending bundles in store to this new neighbor.\n");
     send_bundles_to_new_neighbor(neighbor);
-#endif
+// #endif
   }
   else {
     xtimer_remove(&temp->expiry_timer);
@@ -219,6 +219,12 @@ void print_neighbor_list(void) {
     DEBUG("(%lu, %s)-> ", temp->endpoint_num, gnrc_netif_addr_to_str(temp->l2addr, temp->l2addr_len, addr_str));
   }
   DEBUG(".\n");
+}
+
+struct neighbor_t *get_neighbor_from_endpoint_num(uint32_t endpoint_num) {
+  struct neighbor_t * temp ;
+  LL_SEARCH_SCALAR(head_of_neighbors, temp, endpoint_num, endpoint_num);
+  return temp;
 }
 
 struct neighbor_t *get_neighbor_list(void) {
