@@ -36,9 +36,10 @@ struct neighbor_t *route_receivers(uint32_t dst_num) {
 	}
 }
 
-void received_ack(struct actual_bundle *bundle, uint32_t source) {
-	(void) bundle;
-	(void) source;
+void received_ack(struct neighbor_t *src_neighbor, uint32_t creation_timestamp0, uint32_t creation_timestamp1) {
+	(void) src_neighbor;
+	(void) creation_timestamp0;
+	(void) creation_timestamp1;
 	DEBUG("routing_epidemic: Inside processing received acknowledgement.\n");
 
 	return;

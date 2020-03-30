@@ -227,6 +227,23 @@ struct neighbor_t *get_neighbor_from_endpoint_num(uint32_t endpoint_num) {
   return temp;
 }
 
+struct neighbor_t *get_neighbor_from_l2addr(uint8_t *addr) {
+  bool found = false;
+  struct neighbor_t *temp = NULL;
+  LL_FOREACH(head_of_neighbors, temp) {
+    if(strcmp((char*)temp->l2addr, (char*)addr)) {
+      found = true;
+      break;
+    }
+  }
+  if (found){
+    return temp;
+  }
+  else {
+    return NULL;
+  }
+}
+
 struct neighbor_t *get_neighbor_list(void) {
   return head_of_neighbors;
 }

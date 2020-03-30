@@ -104,19 +104,51 @@ int process_bundle_before_forwarding(struct actual_bundle *bundle) {
   return OK;
 }
 
-static void _receive(gnrc_pktsnip_t *pkt)
+bool is_packet_ack(gnrc_pktsnip_t *pkt) {
+  char temp[ACK_IDENTIFIER_SIZE];
+  strncpy(temp, pkt->data, ACK_IDENTIFIER_SIZE);
+  if (strcmp(temp, "ack") == 0) {
+    return true;
+  }
+  return false;
+}
+
+static void _receive(gnrc_pktsnip_t *pkt) 
 {
-    DEBUG("bp: Receive type: %d with length: %d and data: %s\n",pkt->type, pkt->size, (uint8_t*)pkt->data);
-    struct router *cur_router;
+  DEBUG("bp: Receive type: %d with length: %d and data: %s\n",pkt->type, pkt->size, (uint8_t*)pkt->data);
+  struct router *cur_router;
 
-    cur_router = get_router();
+  cur_router = get_router();
 
-    if(pkt->data == NULL) {
-      DEBUG("bp: No data in packet, dropping it.\n");
-      gnrc_pktbuf_release(pkt);
-      return ;
-    }
+  if(pkt->data == NULL) {
+    DEBUG("bp: No data in packet, dropping it.\n");
+    gnrc_pktbuf_release(pkt);
+    return ;
+  }
 
+  if (is_packet_ack(pkt)) {
+    DEBUG("bp: ack received.\n");
+    (void) cur_router;
+    uint8_t *temp_addr;
+    int src_addr_len;
+
+    src_addr_len = gnrc_netif_hdr_get_srcaddr(pkt, &temp_addr);
+    uint8_t src_addr[src_addr_len];
+    strncpy((char*)src_addr, (char*)temp_addr, src_addr_len);
+    DEBUG("bp: src addr from netif hdr %s.\n", src_addr);
+
+    struct neighbor_t *neighbor = get_neighbor_from_l2addr(src_addr);
+
+    DEBUG("bp: ack received from neighbor with endpoint num: %lu and l2addr %s.\n", neighbor->endpoint_num, neighbor->l2addr);
+    char *creation_timestamp0, *creation_timestamp1;
+    strtok(pkt->data, "_");
+    creation_timestamp0 = strtok(NULL, "_");
+    creation_timestamp1 = strtok(NULL, "_");
+    
+    cur_router->received_ack(neighbor, atoi(creation_timestamp0), atoi(creation_timestamp1));
+    
+  }
+  else {
     struct actual_bundle *bundle = create_bundle();
     if (bundle_decode(bundle, pkt->data, pkt->size) == ERROR) {
       DEBUG("bp: Packet received not for bundle protocol.\n");
@@ -127,10 +159,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
       DEBUG("bp: received bundle's lifetime expired.\n");
       return ;
     }
-    DEBUG("bp: Printing received packet!!!!!!!!!!!!!!!!!!!!.\n");
-    print_bundle(bundle);
-    DEBUG("bp: will send packet to upper layer.\n");
-  #ifdef MODULE_GNRC_CONTACT_MANAGER
+
+#ifdef MODULE_GNRC_CONTACT_MANAGER
     if (bundle->primary_block.service_num  == (uint32_t)atoi(CONTACT_MANAGER_SERVICE_NUM)) {
       // gnrc_pktsnip_t *tmp_pkt = gnrc_pktbuf_add(NULL, bundle, sizeof(bundle), GNRC_NETTYPE_CONTACT_MANAGER);
       if (!gnrc_bp_dispatch(GNRC_NETTYPE_CONTACT_MANAGER, GNRC_NETREG_DEMUX_CTX_ALL, bundle, GNRC_NETAPI_MSG_TYPE_RCV)) {
@@ -139,32 +169,21 @@ static void _receive(gnrc_pktsnip_t *pkt)
       }
       gnrc_pktbuf_release(pkt);
     }
-  #endif
+#endif
     else {
       DEBUG("bp: Not a discovery packet with destination: %lu, source: %lu and current address: %lu !!!!!!!!!!!!!!!!!!\n", bundle->primary_block.dst_num, bundle->primary_block.src_num, (uint32_t)atoi(get_src_num()));
       DEBUG("bp: ***********Data in bundle.****************\n");
       od_hex_dump(bundle_get_payload_block(bundle)->block_data, bundle_get_payload_block(bundle)->data_len, OD_WIDTH_DEFAULT);
+      
       /* This bundle is for the current node, send to application that sent it*/
       if (bundle->primary_block.dst_num == (uint32_t)atoi(get_src_num())) {
-        DEBUG("bp: Delivering bundle to application layer.\n ");
-        int res = strcmp((char*)bundle_get_payload_block(bundle)->block_data, "ack");
-        DEBUG("bp: res on comparision of %s and %s:%d.\n", bundle_get_payload_block(bundle)->block_data, "ack", res);
+        /* TODO: Deliver bundle to application as per its registration */
         if (!gnrc_bp_dispatch(GNRC_NETTYPE_BP, bundle->primary_block.service_num, bundle, GNRC_NETAPI_MSG_TYPE_RCV)) {
           DEBUG("bp: Couldn't send bundle to registered receivers.\n");
-          delete_bundle(bundle);
+          /*TODO: Implement deletion according to registration*/
+          // delete_bundle(bundle);
         } /*Bundle received is for this node but not of type acknowledgement*/
-        else if (memcmp(bundle_get_payload_block(bundle)->block_data, "ack", sizeof("ack")) != 0){
-          DEBUG("bp: Will send ack.\n");
-          // send_ack(bundle);
-          send_non_bundle_ack(bundle);
-        }
-        else {
-          DEBUG("bp: ack received.\n");
-          //Function to be implemented as a part of routing module
-          cur_router->received_ack(bundle, bundle->primary_block.src_num);
-          //update_ack_for_bundle(bundle);
-          delete_bundle(bundle);
-        }
+        send_non_bundle_ack(bundle);
       } /*Bundle not for this node, forward received bundle*/
       else {
         struct router *cur_router = get_router();
@@ -229,8 +248,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
         }
       }
     }
-
-    return ;
+  }
+  return ;
 }
 
 static void _send(struct actual_bundle *bundle)

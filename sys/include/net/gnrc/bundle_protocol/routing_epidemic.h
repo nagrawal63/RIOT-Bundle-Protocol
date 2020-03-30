@@ -12,7 +12,7 @@ struct delivered_bundle_list{
 
 void routing_epidemic_init(void);
 struct neighbor_t *route_receivers(uint32_t dst_num);
-void received_ack(struct actual_bundle *bundle, uint32_t source);
+void received_ack(struct neighbor_t *src_neighbor, uint32_t creation_timestamp0, uint32_t creation_timestamp1);
 // struct router* get_router(void);
 
 #endif
