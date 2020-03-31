@@ -4,7 +4,6 @@
 #include "thread.h"
 #include "utlist.h"
 
-// #include "net/gnrc/bp.h"
 #include "net/gnrc/bundle_protocol/routing.h"
 #include "net/gnrc/bundle_protocol/contact_manager.h"
 #include "net/gnrc/bundle_protocol/routing_epidemic.h"

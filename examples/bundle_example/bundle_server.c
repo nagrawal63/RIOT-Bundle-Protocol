@@ -26,7 +26,7 @@
 #include "net/gnrc/netif.h"
 #include "net/gnrc/netif/hdr.h"
 #include "net/gnrc/pktdump.h"
-#include "net/gnrc/bp.h"
+#include "net/gnrc/convergence_layer.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/netdev/ieee802154.h"

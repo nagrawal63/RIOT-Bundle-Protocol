@@ -5,7 +5,7 @@
 #include "utlist.h"
 
 #include "net/gnrc/netif.h"
-#include "net/gnrc/bp.h"
+#include "net/gnrc/convergence_layer.h"
 #include "net/gnrc.h"
 #include "net/gnrc/pktbuf.h"
 #include "net/gnrc/bundle_protocol/config.h"

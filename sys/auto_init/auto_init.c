@@ -98,7 +98,7 @@
 
 
 #ifdef MODULE_GNRC_BP
-#include "net/gnrc/bp.h"
+#include "net/gnrc/convergence_layer.h"
 #endif
 
 #ifdef MODULE_GNRC_CONTACT_MANAGER

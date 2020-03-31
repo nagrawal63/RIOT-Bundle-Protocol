@@ -3,7 +3,7 @@
 #include "utlist.h"
 
 #include "net/gnrc/netif.h"
-#include "net/gnrc/bp.h"
+#include "net/gnrc/convergence_layer.h"
 #include "net/gnrc/bundle_protocol/contact_manager.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
