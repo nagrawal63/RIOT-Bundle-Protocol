@@ -1107,7 +1107,8 @@ int increment_bundle_age(struct bundle_canonical_block_t *bundle_age_block, stru
   uint32_t usecs_from_bundle = atoi((char*)bundle_age_block->block_data);
   uint32_t updated_time = usecs_from_bundle+(xtimer_now().ticks32-bundle->local_creation_time);
   if(updated_time > bundle->primary_block.lifetime) {
-    DEBUG("bundle: lifetime of bundle expired");
+    DEBUG("bundle: lifetime of bundle expired.\n");
+    set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
     // delete_bundle(bundle);
     return ERROR;
   }
@@ -1118,6 +1119,14 @@ int increment_bundle_age(struct bundle_canonical_block_t *bundle_age_block, stru
 int reset_bundle_age(struct bundle_canonical_block_t *bundle_age_block, uint32_t original_age) {
   sprintf((char*)bundle_age_block->block_data, "%lu", original_age);
   return OK;
+}
+
+void set_retention_constraint(struct actual_bundle *bundle, uint8_t constraint) {
+  bundle->retention_constraint = constraint;
+}
+
+uint8_t get_retention_constraint(struct actual_bundle *bundle) {
+  return bundle->retention_constraint;
 }
 
 /*

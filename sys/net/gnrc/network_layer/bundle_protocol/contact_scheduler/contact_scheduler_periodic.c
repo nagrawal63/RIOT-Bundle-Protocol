@@ -80,6 +80,7 @@ int send(char *addr_str, int data, int iface)
   }
 
   struct actual_bundle *bundle = create_bundle();
+  set_retention_constraint(bundle, DISPATCH_PENDING_RETENTION_CONSTRAINT);
   if (bundle == NULL) {
     DEBUG("contact_scheduler: Could not obtain space for bundle.\n");
     return ERROR;
@@ -124,6 +125,7 @@ int send(char *addr_str, int data, int iface)
   }
   print_bundle_storage();
   free(payload_data);
+  set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
   delete_bundle(bundle);
   return 0;
 }

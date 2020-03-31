@@ -31,6 +31,13 @@
 #define BUNDLE_BLOCK_TYPE_HOP_COUNT 0x09
 #define BUNDLE_BLOCK_TYPE_BUNDLE_AGE 0x08
 
+//Retention constraints
+#define DISPATCH_PENDING_RETENTION_CONSTRAINT 0x01
+#define FORWARD_PENDING_RETENTION_CONSTRAINT 0x02
+#define SEND_ACK_PENDING_RETENTION_CONSTRAINT 0x03
+#define REASSEMBLY_PENDING_RETENTION_CONSTRAINT 0x07
+#define NO_RETENTION_CONSTRAINT 0x00
+
 // CRC type codes
 #define NOCRC 0x00
 #define CRC_16 0x01
@@ -122,6 +129,7 @@ struct actual_bundle{
   struct bundle_canonical_block_t other_blocks[MAX_NUM_OF_BLOCKS];
   int num_of_blocks;
   uint32_t local_creation_time;
+  uint8_t retention_constraint;
 };
 
 // void insert_block_in_bundle(struct actual_bundle* bundle, struct bundle_canonical_block_t* block);
@@ -148,6 +156,9 @@ uint8_t bundle_set_attribute(struct actual_bundle* bundle, uint8_t type, void* v
 void print_bundle(struct actual_bundle* bundle);
 int increment_bundle_age(struct bundle_canonical_block_t *bundle_age_block, struct actual_bundle *bundle);
 int reset_bundle_age(struct bundle_canonical_block_t *bundle_age_block, uint32_t original_age);
+
+void set_retention_constraint(struct actual_bundle *bundle, uint8_t constraint);
+uint8_t get_retention_constraint(struct actual_bundle *bundle);
 
 char *get_src_eid(void);
 char *get_src_num(void);

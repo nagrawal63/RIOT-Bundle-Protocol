@@ -61,6 +61,7 @@ struct actual_bundle* get_space_for_bundle(void)
     ret->next = NULL;
   }
   active_bundles++;
+  set_retention_constraint(&ret->current_bundle, NO_RETENTION_CONSTRAINT);
   return &ret->current_bundle;
 }
 
@@ -70,6 +71,10 @@ bool delete_bundle(struct actual_bundle* bundle)
 {
 
   DEBUG("bundle_storage: Deleting bundle created at %lu.\n", bundle->local_creation_time);
+  if (get_retention_constraint(bundle) != NO_RETENTION_CONSTRAINT) {
+    DEBUG("bundle_storage: Cannot delete bundle since bundle's retention constraint is %u.\n", get_retention_constraint(bundle));
+    return false;
+  }
   struct bundle_list* previous_of_to_delete_node = get_previous_bundle_in_list(bundle);
   struct bundle_list* to_delete_node = NULL;
 
