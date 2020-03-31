@@ -32,5 +32,6 @@ struct actual_bundle *get_bundle_from_list(uint32_t creation_timestamp0, uint32_
 void print_bundle_storage(void);
 struct bundle_list *get_bundle_list(void);
 struct bundle_list *find_oldest_bundle_to_purge(void);
+uint8_t get_current_active_bundles(void);
 
 #endif

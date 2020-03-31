@@ -52,6 +52,7 @@ struct neighbor_t *get_neighbor_from_endpoint_num(uint32_t endpoint_num);
 struct neighbor_t *get_neighbor_from_l2addr(uint8_t *addr);
 struct neighbor_t *get_neighbor_list(void);
 void create_neighbor_expiry_timer(struct neighbor_t *neighbor);
+bool is_same_neighbor(struct neighbor_t *neighbor, struct neighbor_t *compare_to_neighbor);
 
 #ifdef __cplusplus
 }

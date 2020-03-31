@@ -178,13 +178,18 @@ static void _receive(gnrc_pktsnip_t *pkt)
       
       /* This bundle is for the current node, send to application that sent it*/
       if (bundle->primary_block.dst_num == (uint32_t)atoi(get_src_num())) {
+        bool delivered = true;
         /* TODO: Deliver bundle to application as per its registration */
         if (!gnrc_bp_dispatch(GNRC_NETTYPE_BP, bundle->primary_block.service_num, bundle, GNRC_NETAPI_MSG_TYPE_RCV)) {
           DEBUG("bp: Couldn't send bundle to registered receivers.\n");
+          delivered = false;
           /*TODO: Implement deletion according to registration*/
           // delete_bundle(bundle);
         } /*Bundle received is for this node but not of type acknowledgement*/
         send_non_bundle_ack(bundle);
+        if (delivered) {
+          delete_bundle(bundle);
+        }
       } /*Bundle not for this node, forward received bundle*/
       else {
         struct router *cur_router = get_router();
@@ -293,19 +298,42 @@ static void _send(struct actual_bundle *bundle)
       free(buf);
       return ;
     }
+
     LL_FOREACH(neighbor_list_to_send, temp) {
-     if (netif != NULL) {
+      struct delivered_bundle_list *ack_list, *temp_ack_list;
+      ack_list = cur_router->get_delivered_bundle_list();
+      if (ack_list == NULL) {
+        DEBUG("bp: Sending bundle to neighbor since ack list is null.\n");
+        if (netif != NULL) {
           gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
           DEBUG("bp: netif hdr data is %s.\n",(char *)netif_hdr->data);
           gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
           LL_PREPEND(pkt, netif_hdr);
-      }
-      if (netif->pid != 0) {
-        DEBUG("bp: Sending discovery packet to process with pid %d.\n", netif->pid);
-        gnrc_netapi_send(netif->pid, pkt);
+        }
+        if (netif->pid != 0) {
+          DEBUG("bp: Sending discovery packet to process with pid %d.\n", netif->pid);
+          gnrc_netapi_send(netif->pid, pkt);
+        }
+      } 
+      LL_FOREACH(ack_list, temp_ack_list) {
+        if (!(is_same_bundle(bundle, temp_ack_list->bundle) && is_same_neighbor(temp, temp_ack_list->neighbor))) {
+          DEBUG("bp: Already delivered bundle with creation time %lu to %s", bundle->local_creation_time, temp->l2addr);
+        }
+        else {
+          DEBUG("bp: Sending bundle to neighbor.\n");
+          if (netif != NULL) {
+            gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
+            DEBUG("bp: netif hdr data is %s.\n",(char *)netif_hdr->data);
+            gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
+            LL_PREPEND(pkt, netif_hdr);
+          }
+          if (netif->pid != 0) {
+            DEBUG("bp: Sending discovery packet to process with pid %d.\n", netif->pid);
+            gnrc_netapi_send(netif->pid, pkt);
+          }
+        }
       }
     }
-    
     // delete_bundle(bundle);
     return ;
 }
@@ -335,7 +363,7 @@ static void *_event_loop(void *args)
 
   timer->callback = &retransmit_timer_callback;
   timer->arg = timer;
-  // xtimer_set(timer, xtimer_ticks_from_usec(RETRANSMIT_TIMER_SECONDS).ticks32);
+  xtimer_set(timer, xtimer_ticks_from_usec(RETRANSMIT_TIMER_SECONDS).ticks32);
 
   while(1){
     DEBUG("bp: waiting for incoming message.\n");
@@ -362,15 +390,20 @@ static void *_event_loop(void *args)
 }
 
 static void retransmit_timer_callback(void *args) {
+  printf("bp: inside retransmit_timer_callback.\n");
   (void) args;
   struct bundle_list *bundle_storage_list = get_bundle_list(), *temp;
-  LL_FOREACH(bundle_storage_list, temp) {
+  uint8_t active_bundles = get_current_active_bundles(), i = 0;
+  temp = bundle_storage_list;
+  while (temp != NULL && i < active_bundles) {
     if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, &temp->current_bundle, GNRC_NETAPI_MSG_TYPE_SND)) {
       printf("Unable to find BP thread.\n");
       // gnrc_pktbuf_release(pkt);
       // delete_bundle(bundle1);
       return ;
     }
+    temp = temp->next;
+    i++;
   }
   xtimer_set(args, xtimer_ticks_from_usec(RETRANSMIT_TIMER_SECONDS).ticks32);
 }

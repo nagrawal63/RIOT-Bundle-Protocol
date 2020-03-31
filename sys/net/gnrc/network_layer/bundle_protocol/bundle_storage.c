@@ -10,6 +10,7 @@
 static uint8_t next_block_number = 0;
 struct bundle_list* free_list;
 struct bundle_list* head_of_store;
+static uint8_t active_bundles = 0;
 
 struct bundle_list* bundle_storage_init(void)
 {
@@ -41,6 +42,7 @@ struct actual_bundle* get_space_for_bundle(void)
     struct bundle_list *oldest_bundle = find_oldest_bundle_to_purge();
     if(delete_bundle(&oldest_bundle->current_bundle)) {
       DEBUG("bundle_storage: deleted oldest bundle .\n");
+      active_bundles--;
       get_router()->notify_bundle_deletion(&oldest_bundle->current_bundle);
       return get_space_for_bundle();
     }
@@ -58,6 +60,7 @@ struct actual_bundle* get_space_for_bundle(void)
     // returning the bundle at head_of_store
     ret->next = NULL;
   }
+  active_bundles++;
   return &ret->current_bundle;
 }
 
@@ -85,6 +88,7 @@ bool delete_bundle(struct actual_bundle* bundle)
   if(head_of_store == NULL){
     head_of_store = free_list;
   }
+  active_bundles--;
   DEBUG("bundle_storage: Printing bundle storage after deleting.\n");
   // memset(&to_delete_node->unique_id, 0, sizeof(uint32_t));
   print_bundle_storage();
@@ -172,4 +176,8 @@ struct bundle_list *find_oldest_bundle_to_purge(void) {
   }
   DEBUG("bundle_storage: Will delete bundle with creation time:%lu.\n", oldest_bundle->current_bundle.local_creation_time);
   return oldest_bundle;
+}
+
+uint8_t get_current_active_bundles(void) {
+  return active_bundles;
 }

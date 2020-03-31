@@ -261,3 +261,14 @@ static void timer_expiry_callback (void *args) {
   // printf("contact_manager: neighbor list after deleting.\n");
   // print_neighbor_list();
 }
+
+bool is_same_neighbor(struct neighbor_t *neighbor, struct neighbor_t *compare_to_neighbor) {
+  if (neighbor->endpoint_scheme == IPN && compare_to_neighbor->endpoint_scheme == IPN) { 
+    if (neighbor->endpoint_num == compare_to_neighbor->endpoint_num) {
+      if (neighbor-> l2addr_len == compare_to_neighbor->l2addr_len && memcmp(neighbor->l2addr, compare_to_neighbor->l2addr, neighbor->l2addr_len) == 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}

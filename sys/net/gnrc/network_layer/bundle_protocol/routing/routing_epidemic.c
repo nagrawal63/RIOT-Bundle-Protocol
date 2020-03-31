@@ -22,6 +22,7 @@ void routing_epidemic_init(void) {
 	this_router->route_receivers = route_receivers;
 	this_router->received_ack = received_ack;
 	this_router->notify_bundle_deletion = notify_bundle_deletion;
+	this_router->get_delivered_bundle_list = get_delivered_bundle_list;
 }
 
 //Implemented assuming endpoint_scheme is IPN
@@ -79,6 +80,9 @@ void print_delivered_bundle_list (void) {
 	DEBUG("NULL.\n");
 }
 
+struct delivered_bundle_list *get_delivered_bundle_list(void) {
+	return head_ptr;
+}
 // struct router* get_router(void) {
 // 	return this_router;
 // }
