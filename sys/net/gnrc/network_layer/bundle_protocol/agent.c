@@ -57,7 +57,7 @@ void send_bundle(uint8_t *payload_data, size_t data_len, char *dst, char *servic
 	    printf("Unable to find BP thread.\n");
 	    delete_bundle(bundle);
 	    return ;
-	  }
+	}
 }
 
 bool register_application(uint32_t service_num)
@@ -118,6 +118,5 @@ static int calculate_size_of_num(uint32_t num) {
     return 0;
   }
   int a = ((ceil(log10(num))+1)*sizeof(char)); 
-  // DEBUG("bp:size = %d.\n",a );
   return a;
 }
