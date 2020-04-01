@@ -107,7 +107,7 @@ struct bundle_primary_block_t{ // This is the order in which the elements of the
   uint32_t report_num;
   uint32_t service_num;
   uint32_t creation_timestamp[2];
-  uint8_t lifetime;
+  uint32_t lifetime;
   uint32_t fragment_offset;
   uint32_t total_application_data_length;
   uint32_t crc;

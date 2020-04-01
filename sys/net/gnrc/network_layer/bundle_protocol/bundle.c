@@ -1086,7 +1086,7 @@ void print_bundle(struct actual_bundle* bundle)
   }
   // DEBUG("Bundle primary block report_eid: %s\n", bundle->primary_block.report_eid == NULL ? 0 :  (char*)bundle->primary_block.report_eid);
   DEBUG("Bundle primary block creation_timestamp: %ld, %ld\n", bundle->primary_block.creation_timestamp[0], bundle->primary_block.creation_timestamp[1]);
-  DEBUG("Bundle primary block lifetime: %d\n", bundle->primary_block.lifetime);
+  DEBUG("Bundle primary block lifetime: %lu\n", bundle->primary_block.lifetime);
   DEBUG("Bundle primary block fragment_offset: %ld\n", bundle->primary_block.fragment_offset);
   DEBUG("Bundle primary block total_application_data_length: %ld\n", bundle->primary_block.total_application_data_length);
   DEBUG("Bundle primary block crc: %ld\n", bundle->primary_block.crc);
@@ -1104,7 +1104,7 @@ void print_bundle(struct actual_bundle* bundle)
 }
 
 int increment_bundle_age(struct bundle_canonical_block_t *bundle_age_block, struct actual_bundle *bundle) {
-  uint32_t usecs_from_bundle = atoi((char*)bundle_age_block->block_data);
+  uint32_t usecs_from_bundle = strtoul((char*)bundle_age_block->block_data, NULL, bundle_age_block->data_len);
   uint32_t updated_time = usecs_from_bundle+(xtimer_now().ticks32-bundle->local_creation_time);
   if(updated_time > bundle->primary_block.lifetime) {
     DEBUG("bundle: lifetime of bundle expired.\n");

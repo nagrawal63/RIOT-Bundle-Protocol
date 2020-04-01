@@ -37,6 +37,8 @@ void send_bundles_to_new_neighbor (struct neighbor_t *neighbor);
 void send_non_bundle_ack(struct actual_bundle *bundle);
 void send_ack(struct actual_bundle *bundle);
 
+int deliver_bundles_to_application(uint32_t service_num);
+
 #ifdef __cplusplus
 }
 #endif

@@ -12,6 +12,7 @@
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/gnrc/bundle_protocol/routing.h"
+#include "net/gnrc/bundle_protocol/agent.h"
 
 #define ENABLE_DEBUG    (1)
 #include "debug.h"
@@ -80,7 +81,7 @@ bool check_lifetime_expiry(struct actual_bundle *bundle) {
   struct bundle_canonical_block_t *bundle_age_block = get_block_by_type(bundle, BUNDLE_BLOCK_TYPE_BUNDLE_AGE);
 
   if (bundle_age_block != NULL) {
-    if (bundle->primary_block.lifetime < atoi((char*)bundle_age_block->block_data)) {
+    if (bundle->primary_block.lifetime < strtoul((char*)bundle_age_block->block_data, NULL, bundle_age_block->data_len)) {
       delete_bundle(bundle);
       return true;
     }
@@ -182,7 +183,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
         set_retention_constraint(bundle, SEND_ACK_PENDING_RETENTION_CONSTRAINT);
         bool delivered = true;
         /* TODO: Deliver bundle to application as per its registration */
-        if (!gnrc_bp_dispatch(GNRC_NETTYPE_BP, bundle->primary_block.service_num, bundle, GNRC_NETAPI_MSG_TYPE_RCV)) {
+        if (get_registration_status(bundle->primary_block.service_num) == REGISTRATION_ACTIVE && !gnrc_bp_dispatch(GNRC_NETTYPE_BP, bundle->primary_block.service_num, bundle, GNRC_NETAPI_MSG_TYPE_RCV)) {
           DEBUG("convergence_layer: Couldn't send bundle to registered receivers.\n");
           delivered = false;
           /*TODO: Implement deletion according to registration*/
@@ -575,6 +576,13 @@ void send_ack(struct actual_bundle *bundle) {
     return ;
   }
   delete_bundle(ack_bundle);  
+}
+
+int deliver_bundles_to_application(uint32_t service_num)
+{
+  (void) service_num;
+  DEBUG("convergence_layer: delivering bundles to new application.\n");
+  return OK;
 }
 
 static int calculate_size_of_num(uint32_t num) {
