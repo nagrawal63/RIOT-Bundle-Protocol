@@ -135,10 +135,9 @@ struct actual_bundle{
   uint8_t retention_constraint;
 };
 
-// void insert_block_in_bundle(struct actual_bundle* bundle, struct bundle_canonical_block_t* block);
 bool is_same_bundle(struct actual_bundle* current_bundle, struct actual_bundle* compare_to_bundle);
 uint16_t calculate_crc_16(uint8_t type, void *block);
-uint32_t calculate_crc_32(uint8_t type);
+uint32_t calculate_crc_32(uint8_t type, void *block);
 bool verify_checksum(void *block, uint8_t type, uint32_t crc);
 void calculate_primary_flag(uint64_t *flag, bool is_fragment, bool dont_fragment);
 int calculate_canonical_flag(uint64_t *flag, bool replicate_block);
@@ -165,7 +164,7 @@ int reset_bundle_age(struct bundle_canonical_block_t *bundle_age_block, uint32_t
 
 void set_retention_constraint(struct actual_bundle *bundle, uint8_t constraint);
 uint8_t get_retention_constraint(struct actual_bundle *bundle);
-
+uint32_t crc32_func(const void* data, size_t length, uint32_t previousCrc32, uint32_t polynomial);
 
 char *get_src_eid(void);
 char *get_src_num(void);

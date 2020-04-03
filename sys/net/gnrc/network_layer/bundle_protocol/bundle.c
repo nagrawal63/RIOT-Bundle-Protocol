@@ -1,5 +1,6 @@
 
 #include "checksum/ucrc16.h"
+#include "checksum/fletcher32.h"
 #include "byteorder.h"
 
 #include "net/gnrc/bundle_protocol/bundle.h"
@@ -799,17 +800,53 @@ uint16_t calculate_crc_16(uint8_t type, void *block)
   return 0;
 }
 
-uint32_t calculate_crc_32(uint8_t type)
+uint32_t calculate_crc_32(uint8_t type, void *block)
 {
   switch(type){
     case BUNDLE_BLOCK_TYPE_PRIMARY:
     {
+      uint8_t *data;
+      nanocbor_encoder_t enc;
+      size_t required_size;
 
+      nanocbor_encoder_init(&enc, NULL, 0);
+      encode_primary_block((struct actual_bundle *)block, &enc);
+      required_size = nanocbor_encoded_len(&enc);
+      data = malloc(required_size);
+      nanocbor_encoder_init(&enc, data, required_size);
+      encode_primary_block((struct actual_bundle *)block, &enc);
+      // uint32_t crc_val = fletcher32(data, required_size/2);
+      uint32_t crc_val = crc32_func(data, required_size, 0x00000000, CRC32_FUNCTION);
+      DEBUG("bundle: crc32_val = %lu for data = ", crc_val);
+      for(int i=0;i<(int)required_size;i++){
+        printf("%02x",data[i]);
+      }
+      printf(" .\n");
+      free(data);
+      return crc_val;
     }
     break;
     case BUNDLE_BLOCK_TYPE_CANONICAL:
     {
+      uint8_t *data;
+      nanocbor_encoder_t enc;
+      size_t required_size;
 
+      nanocbor_encoder_init(&enc, NULL, 0);
+      encode_canonical_block((struct bundle_canonical_block_t *)block, &enc);
+      required_size = nanocbor_encoded_len(&enc);
+      data = malloc(required_size);
+      nanocbor_encoder_init(&enc, data, required_size);
+      encode_canonical_block((struct bundle_canonical_block_t *)block, &enc);
+      // uint32_t crc_val = fletcher32(data, required_size/2);
+      uint32_t crc_val = crc32_func(data, required_size, 0x00000000, CRC32_FUNCTION);
+      DEBUG("bundle: crc32_val = %lu for data = ", crc_val);
+      for(int i=0;i<(int)required_size;i++){
+        printf("%02x",data[i]);
+      }
+      printf(" .\n");
+      free(data);
+      return crc_val;
     }
     break;
     default:
@@ -838,9 +875,12 @@ bool verify_checksum(void *block, uint8_t type, uint32_t crc)
       data = malloc(required_size);
       nanocbor_encoder_init(&enc, data, required_size);
       encode_primary_block((struct actual_bundle *)block, &enc);
-      
+
       if (((struct actual_bundle *)block)->primary_block.crc_type == CRC_16){
         crc_val = ucrc16_calc_be(data, required_size, CRC16_FUNCTION, 0xFFFF);
+      }
+      else if (((struct actual_bundle *)block)->primary_block.crc_type == CRC_32) {
+        crc_val = crc32_func(data, required_size, 0x00000000, CRC32_FUNCTION);
       }
       free(data);
       if (crc_val == crc) {
@@ -868,6 +908,9 @@ bool verify_checksum(void *block, uint8_t type, uint32_t crc)
 
       if (((struct actual_bundle *)block)->primary_block.crc_type == CRC_16){
         crc_val = ucrc16_calc_be(data, required_size, CRC16_FUNCTION, 0xFFFF);
+      }
+      else if (((struct actual_bundle *)block)->primary_block.crc_type == CRC_32) {
+        crc_val = crc32_func(data, required_size, 0x00000000, CRC32_FUNCTION);
       }
       free(data);
       if (crc_val == crc) {
@@ -1061,15 +1104,15 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
     }
     case CRC_32:
     {
-      // uint32_t crc = calculate_crc_32(BUNDLE_BLOCK_TYPE_PRIMARY);
-      // if(!bundle_set_attribute(bundle, CRC_PRIMARY, &crc)){
-      //   DEBUG("bundle: Could not set bundle crc.\n");
-      //   return ;
-      // }
-      if(!bundle_set_attribute(bundle, CRC_PRIMARY, &zero_crc)){
+      uint32_t crc = calculate_crc_32(BUNDLE_BLOCK_TYPE_PRIMARY, bundle);
+      if(!bundle_set_attribute(bundle, CRC_PRIMARY, &crc)){
         DEBUG("bundle: Could not set bundle crc.\n");
         return ;
       }
+      // if(!bundle_set_attribute(bundle, CRC_PRIMARY, &zero_crc)){
+      //   DEBUG("bundle: Could not set bundle crc.\n");
+      //   return ;
+      // }
       break;
     }
   }
@@ -1124,7 +1167,7 @@ int bundle_add_block(struct actual_bundle* bundle, uint8_t type, uint64_t flags,
       break;
     case CRC_32:
       {
-        block->crc = calculate_crc_32(BUNDLE_BLOCK_TYPE_CANONICAL);
+        block->crc = calculate_crc_32(BUNDLE_BLOCK_TYPE_CANONICAL, block);
       }
       break;
   }
@@ -1389,37 +1432,19 @@ uint8_t get_retention_constraint(struct actual_bundle *bundle) {
   return bundle->retention_constraint;
 }
 
-uint32_t rc_crc32(uint32_t function, uint32_t crc, const char *buf, size_t len)
-{
-  static uint32_t table[256];
-  static int have_table = 0;
-  uint32_t rem;
-  uint8_t octet;
-  int i, j;
-  const char *p, *q;
- 
-  /* This check is not thread safe; there is no mutex. */
-  if (have_table == 0) {
-    /* Calculate CRC table. */
-    for (i = 0; i < 256; i++) {
-      rem = i;  /* remainder from polynomial division */
-      for (j = 0; j < 8; j++) {
-        if (rem & 1) {
-          rem >>= 1;
-          rem ^= function;
-        } else
-          rem >>= 1;
-      }
-      table[i] = rem;
-    }
-    have_table = 1;
-  }
- 
-  crc = ~crc;
-  q = buf + len;
-  for (p = buf; p < q; p++) {
-    octet = *p;  /* Cast to unsigned octet. */
-    crc = (crc >> 8) ^ table[(crc & 0xff) ^ octet];
+
+uint32_t crc32_func(const void* data, size_t length, uint32_t previousCrc32, uint32_t polynomial) {
+
+  uint32_t crc = ~previousCrc32; 
+  unsigned char* current = (unsigned char*) data;
+  while (length--)
+  {
+    crc ^= *current++;
+    for (unsigned int j = 0; j < 8; j++)
+      if (crc & 1)
+        crc = (crc >> 1) ^ polynomial;
+      else
+        crc =  crc >> 1;
   }
   return ~crc;
 }
