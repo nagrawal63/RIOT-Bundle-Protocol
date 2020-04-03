@@ -177,7 +177,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
       DEBUG("convergence_layer: Not a discovery packet with destination: %lu, source: %lu and current address: %lu !!!!!!!!!!!!!!!!!!\n", bundle->primary_block.dst_num, bundle->primary_block.src_num, (uint32_t)atoi(get_src_num()));
       DEBUG("convergence_layer: ***********Data in bundle.****************\n");
       od_hex_dump(bundle_get_payload_block(bundle)->block_data, bundle_get_payload_block(bundle)->data_len, OD_WIDTH_DEFAULT);
-      
+      /*Sending acknowledgement for received bundle*/
+      send_non_bundle_ack(bundle);
       /* This bundle is for the current node, send to application that sent it*/
       if (bundle->primary_block.dst_num == (uint32_t)atoi(get_src_num())) {
         set_retention_constraint(bundle, SEND_ACK_PENDING_RETENTION_CONSTRAINT);
@@ -189,7 +190,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
           /*TODO: Implement deletion according to registration*/
           // delete_bundle(bundle);
         } /*Bundle received is for this node but not of type acknowledgement*/
-        send_non_bundle_ack(bundle);
+        
         set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
         if (delivered) {
           DEBUG("convergence_layer: Bundle delivered to application layer, deleting from here.\n");
