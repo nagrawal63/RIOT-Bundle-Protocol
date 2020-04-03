@@ -43,6 +43,9 @@
 #define CRC_16 0x01
 #define CRC_32 0x02
 
+#define CRC16_FUNCTION 0x1021
+#define CRC32_FUNCTION 0x1EDC6F41
+
 #define FRAGMENT_IDENTIFICATION_MASK 0x0000000000000001
 
 #define BLOCK_DATA_BUF_SIZE 100
@@ -134,15 +137,18 @@ struct actual_bundle{
 
 // void insert_block_in_bundle(struct actual_bundle* bundle, struct bundle_canonical_block_t* block);
 bool is_same_bundle(struct actual_bundle* current_bundle, struct actual_bundle* compare_to_bundle);
-uint16_t calculate_crc_16(uint8_t type);
+uint16_t calculate_crc_16(uint8_t type, void *block);
 uint32_t calculate_crc_32(uint8_t type);
+bool verify_checksum(void *block, uint8_t type, uint32_t crc);
 void calculate_primary_flag(uint64_t *flag, bool is_fragment, bool dont_fragment);
 int calculate_canonical_flag(uint64_t *flag, bool replicate_block);
 
 struct actual_bundle* create_bundle(void);
-void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dest_eid, char* report_eid, int lifetime, int crc_type, char* service_num);
+void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dest_eid, char* report_eid, uint32_t lifetime, int crc_type, char* service_num);
 int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc);
 int bundle_decode(struct actual_bundle* bundle, uint8_t *buffer, size_t buf_len);
+int encode_primary_block(struct actual_bundle *bundle, nanocbor_encoder_t *enc);
+int encode_canonical_block(struct bundle_canonical_block_t *canonical_block, nanocbor_encoder_t *enc);
 
 struct bundle_primary_block_t* bundle_get_primary_block(struct actual_bundle* bundle);
 struct bundle_canonical_block_t* bundle_get_payload_block(struct actual_bundle* bundle);
@@ -159,6 +165,7 @@ int reset_bundle_age(struct bundle_canonical_block_t *bundle_age_block, uint32_t
 
 void set_retention_constraint(struct actual_bundle *bundle, uint8_t constraint);
 uint8_t get_retention_constraint(struct actual_bundle *bundle);
+
 
 char *get_src_eid(void);
 char *get_src_num(void);

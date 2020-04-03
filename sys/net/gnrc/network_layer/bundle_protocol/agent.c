@@ -15,6 +15,10 @@ static struct registration_status *application_list = NULL;
 
 static int calculate_size_of_num(uint32_t num);
 
+void bundle_protocol_init(void) {
+	bundle_storage_init();
+}
+
 void send_bundle(uint8_t *payload_data, size_t data_len, char *dst, char *service_num, int iface, char *report_num, uint8_t crctype, uint32_t lifetime) 
 {
 	// (void) data;

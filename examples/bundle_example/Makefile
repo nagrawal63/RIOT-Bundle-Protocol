@@ -38,6 +38,7 @@ USEMODULE += gnrc_pktdump
 USEMODULE += shell
 USEMODULE += shell_commands
 USEMODULE += ps
+USEMODULE += checksum
 # USEMODULE += netstats_l2
 # USEMODULE += netstats_ipv6
 # USEMODULE += netstats_rpl
