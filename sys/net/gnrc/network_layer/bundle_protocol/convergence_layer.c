@@ -12,7 +12,6 @@
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/gnrc/bundle_protocol/routing.h"
-#include "net/gnrc/bundle_protocol/agent.h"
 
 #define ENABLE_DEBUG    (1)
 #include "debug.h"
@@ -49,6 +48,7 @@ kernel_pid_t gnrc_bp_init(void)
                         THREAD_CREATE_STACKTEST, _event_loop, NULL, "convergence_layer");
 
   DEBUG("convergence_layer: thread created with pid: %d\n",_pid);
+  bundle_protocol_init();
   return _pid;
 }
 
@@ -75,6 +75,12 @@ int gnrc_bp_dispatch(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bund
     return ret;
   }
   return ERROR;
+}
+
+void deliver_bundle(void *ptr, struct registration_status *application) {
+  msg_t msg;
+  msg.content.ptr = ptr;
+  msg_try_send(&msg, application->pid);
 }
 
 bool check_lifetime_expiry(struct actual_bundle *bundle) {
@@ -183,14 +189,15 @@ static void _receive(gnrc_pktsnip_t *pkt)
       if (bundle->primary_block.dst_num == (uint32_t)atoi(get_src_num())) {
         set_retention_constraint(bundle, SEND_ACK_PENDING_RETENTION_CONSTRAINT);
         bool delivered = true;
-        /* TODO: Deliver bundle to application as per its registration */
-        if (get_registration_status(bundle->primary_block.service_num) == REGISTRATION_ACTIVE && !gnrc_bp_dispatch(GNRC_NETTYPE_BP, bundle->primary_block.service_num, bundle, GNRC_NETAPI_MSG_TYPE_RCV)) {
-          DEBUG("convergence_layer: Couldn't send bundle to registered receivers.\n");
+        struct registration_status *application = get_registration(bundle->primary_block.service_num);
+        if (application->status == REGISTRATION_ACTIVE) {
+          deliver_bundle((void *)(bundle_get_payload_block(bundle)->block_data), application);
+          delivered = true;
+        }
+        else {
+          DEBUG("convergence_layer: Couldn't deliver bundle to application.\n");
           delivered = false;
-          /*TODO: Implement deletion according to registration*/
-          // delete_bundle(bundle);
-        } /*Bundle received is for this node but not of type acknowledgement*/
-        
+        }
         set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
         if (delivered) {
           DEBUG("convergence_layer: Bundle delivered to application layer, deleting from here.\n");
@@ -273,13 +280,13 @@ static void _send(struct actual_bundle *bundle)
     set_retention_constraint(bundle, DISPATCH_PENDING_RETENTION_CONSTRAINT);
     struct router *cur_router = get_router();
     struct neighbor_t *temp;
-    DEBUG("convergence_layer: Send type: %d\n",bundle->primary_block.version);
+    // DEBUG("convergence_layer: Send type: %d\n",bundle->primary_block.version);
 
     gnrc_netif_t *netif = NULL;
     nanocbor_encoder_t enc;
 
     netif = gnrc_netif_get_by_pid(iface);
-    DEBUG("convergence_layer: Sending bundle to hardcoded interface %d.\n", iface);
+    // DEBUG("convergence_layer: Sending bundle to hardcoded interface %d.\n", iface);
 
     struct neighbor_t *neighbor_list_to_send = cur_router->route_receivers(bundle->primary_block.dst_num);
     print_potential_neighbor_list(neighbor_list_to_send);
@@ -316,30 +323,32 @@ static void _send(struct actual_bundle *bundle)
         DEBUG("convergence_layer: Sending bundle to neighbor since ack list is null.\n");
         if (netif != NULL) {
           gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
-          DEBUG("convergence_layer: netif hdr data is %s.\n",(char *)netif_hdr->data);
+          // DEBUG("convergence_layer: netif hdr data is %s.\n",(char *)netif_hdr->data);
           gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
           LL_PREPEND(pkt, netif_hdr);
         }
         if (netif->pid != 0) {
-          DEBUG("convergence_layer: Sending discovery packet to process with pid %d.\n", netif->pid);
+          // DEBUG("convergence_layer: Sending packet to process with pid %d.\n", netif->pid);
           gnrc_netapi_send(netif->pid, pkt);
         }
       } 
-      LL_FOREACH(ack_list, temp_ack_list) {
-        if ((is_same_bundle(bundle, temp_ack_list->bundle) && is_same_neighbor(temp, temp_ack_list->neighbor))) {
-          DEBUG("convergence_layer: Already delivered bundle with creation time %lu to %s", bundle->local_creation_time, temp->l2addr);
-        }
-        else {
-          DEBUG("convergence_layer: Sending bundle to neighbor.\n");
-          if (netif != NULL) {
-            gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
-            DEBUG("convergence_layer: netif hdr data is %s.\n",(char *)netif_hdr->data);
-            gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
-            LL_PREPEND(pkt, netif_hdr);
+      else {
+        LL_FOREACH(ack_list, temp_ack_list) {
+          if ((is_same_bundle(bundle, temp_ack_list->bundle) && is_same_neighbor(temp, temp_ack_list->neighbor))) {
+            DEBUG("convergence_layer: Already delivered bundle with creation time %lu to %s", bundle->local_creation_time, temp->l2addr);
           }
-          if (netif->pid != 0) {
-            DEBUG("convergence_layer: Sending discovery packet to process with pid %d.\n", netif->pid);
-            gnrc_netapi_send(netif->pid, pkt);
+          else {
+            // DEBUG("convergence_layer: Sending bundle to neighbor.\n");
+            if (netif != NULL) {
+              gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
+              // DEBUG("convergence_layer: netif hdr data is %s.\n",(char *)netif_hdr->data);
+              gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
+              LL_PREPEND(pkt, netif_hdr);
+            }
+            if (netif->pid != 0) {
+              // DEBUG("convergence_layer: Sending packet to process with pid %d.\n", netif->pid);
+              gnrc_netapi_send(netif->pid, pkt);
+            }
           }
         }
       }
@@ -406,7 +415,7 @@ static void retransmit_timer_callback(void *args) {
   struct bundle_list *bundle_storage_list = get_bundle_list(), *temp;
   uint8_t active_bundles = get_current_active_bundles(), i = 0;
   temp = bundle_storage_list;
-  while (temp != NULL && i < active_bundles && get_retention_constraint(&temp->current_bundle) == NO_RETENTION_CONSTRAINT) {
+  while (temp != NULL && i < active_bundles && get_retention_constraint(&temp->current_bundle) == NO_RETENTION_CONSTRAINT && temp->current_bundle.primary_block.dst_num != strtoul(get_src_num(), NULL, 10)) {
     if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, &temp->current_bundle, GNRC_NETAPI_MSG_TYPE_SND)) {
       printf("convergence_layer: Unable to find BP thread.\n");
       // gnrc_pktbuf_release(pkt);
@@ -568,7 +577,7 @@ void send_ack(struct actual_bundle *bundle) {
   // DEBUG("bp: sprinted values: %s, %s, %s; actual nums: %lu, %lu, %lu.\n", buf_dst, buf_report, buf_service, bundle->primary_block.src_num, bundle->primary_block.report_num, bundle->primary_block.service_num);
   // DEBUG("bp: Creating bundle for ack");
   ack_bundle = create_bundle();
-  fill_bundle(ack_bundle, 7, IPN, buf_dst, buf_report, lifetime, bundle->primary_block.crc_type, buf_service);
+  fill_bundle(ack_bundle, 7, IPN, buf_dst, buf_report, lifetime, bundle->primary_block.crc_type, buf_service, iface);
   bundle_add_block(ack_bundle, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);
 
   if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, ack_bundle, GNRC_NETAPI_MSG_TYPE_SND)) {
@@ -579,10 +588,16 @@ void send_ack(struct actual_bundle *bundle) {
   delete_bundle(ack_bundle);  
 }
 
-int deliver_bundles_to_application(uint32_t service_num)
+int deliver_bundles_to_application(struct registration_status *application)
 {
-  (void) service_num;
   DEBUG("convergence_layer: delivering bundles to new application.\n");
+  struct bundle_list *list, *temp;
+  list = get_bundle_list();
+  LL_FOREACH(list, temp) {
+    if (list->current_bundle.primary_block.dst_num == strtoul(get_src_num(), NULL, 10) && list->current_bundle.primary_block.service_num == application->service_num) {
+      deliver_bundle((void *)(bundle_get_payload_block(&list->current_bundle)->block_data), application);
+    }
+  }
   return OK;
 }
 

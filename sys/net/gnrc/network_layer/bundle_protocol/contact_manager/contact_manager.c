@@ -147,8 +147,6 @@ static void _send(gnrc_pktsnip_t *pkt)
   iface = netif->pid;
 
   if(iface != 0) {
-    DEBUG("contact_manager: Sending discovery packet.\n");
-    DEBUG("contact_manager: type of packet before sending it: %d.\n", pkt->next->type);
     /*Setting netif to old value */
     gnrc_netif_hdr_set_netif(pkt->data, netif);
     gnrc_netapi_dispatch_send(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, pkt);

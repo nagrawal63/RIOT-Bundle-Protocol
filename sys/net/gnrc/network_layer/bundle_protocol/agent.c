@@ -37,7 +37,7 @@ void send_bundle(uint8_t *payload_data, size_t data_len, char *dst, char *servic
 	return;
 	}
 
-	fill_bundle(bundle, 7, IPN, dst, report_num, lifetime, crctype, service_num);
+	fill_bundle(bundle, 7, IPN, dst, report_num, lifetime, crctype, service_num, iface);
 	bundle_add_block(bundle, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, crctype, data_len);
 
 	/* Creating bundle age block*/
@@ -64,31 +64,15 @@ void send_bundle(uint8_t *payload_data, size_t data_len, char *dst, char *servic
 	}
 }
 
-bool register_application(uint32_t service_num)
+bool register_application(uint32_t service_num, kernel_pid_t pid)
 {
-    // /* check if server is already running */
-    // if (server.target.pid != KERNEL_PID_UNDEF) {
-    //     printf("agent: application already running with service number %" PRIu32 "\n",
-    //            server.demux_ctx);
-    //     return;
-    // }
-    // /* parse port */
-    // // port = atoi(port_str);
-    // if (service_num == 0) {
-    //     DEBUG("agent: invalid service_num specified");
-    //     return;
-    // }
-    // /* start server (which means registering pktdump for the chosen port) */
-    // server.target.pid = gnrc_pktdump_pid;
-    // server.demux_ctx = (uint32_t)port;
-    // gnrc_netreg_register(GNRC_NETTYPE_UDP, &server);
-    // printf("agent: started UDP server on port %" PRIu16 "\n", port);
-
-    struct registration_status *new_application = malloc(sizeof(struct registration_status));
-    new_application->service_num = service_num;
-    new_application->status = REGISTRATION_ACTIVE;
-    LL_APPEND(application_list, new_application);
-    return true;
+	struct registration_status *new_application = malloc(sizeof(struct registration_status));
+	new_application->service_num = service_num;
+	new_application->status = REGISTRATION_ACTIVE;
+	new_application->pid = pid;
+	LL_APPEND(application_list, new_application);
+	deliver_bundles_to_application(new_application);
+	return true;
 }
 
 bool set_registration_state(uint32_t service_num, uint8_t state)
@@ -101,7 +85,7 @@ bool set_registration_state(uint32_t service_num, uint8_t state)
 	}
 	temp->status = state;
 	if (state == REGISTRATION_ACTIVE) {
-		deliver_bundles_to_application(service_num);
+		deliver_bundles_to_application(temp);
 	}
 	return true;
 }
@@ -118,9 +102,20 @@ uint8_t get_registration_status(uint32_t service_num)
 }
 
 static int calculate_size_of_num(uint32_t num) {
-  if(num == 0) {
-    return 0;
-  }
-  int a = ((ceil(log10(num))+1)*sizeof(char)); 
-  return a;
+	if(num == 0) {
+		return 0;
+	}
+	int a = ((ceil(log10(num))+1)*sizeof(char)); 
+	return a;
+}
+
+struct registration_status *get_registration (uint32_t service_num)
+{
+	struct registration_status *temp;
+	LL_SEARCH_SCALAR(application_list, temp, service_num, service_num);
+	if (temp == NULL) {
+		DEBUG("agent: Couldn't find application running.\n");
+		return 0;
+	}
+	return temp;
 }

@@ -195,7 +195,6 @@ static inline void gnrc_netif_hdr_set_dst_addr(gnrc_netif_hdr_t *hdr,
                                                const uint8_t *addr,
                                                uint8_t addr_len)
 {
-    printf("**********************Inside setting netif hdr***********************************\n");
     if (addr_len != hdr->dst_l2addr_len) {
         return;
     }

@@ -9,6 +9,7 @@
 #include "net/gnrc/bundle_protocol/config.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/contact_manager.h"
+#include "net/gnrc/bundle_protocol/agent.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,13 +32,14 @@ kernel_pid_t gnrc_bp_init(void);
 
 int gnrc_bp_dispatch(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bundle *bundle, uint16_t cmd);
 
+void deliver_bundle(void *ptr, struct registration_status *application);
 bool check_lifetime_expiry(struct actual_bundle *bundle);
 
 void send_bundles_to_new_neighbor (struct neighbor_t *neighbor);
 void send_non_bundle_ack(struct actual_bundle *bundle);
 void send_ack(struct actual_bundle *bundle);
 
-int deliver_bundles_to_application(uint32_t service_num);
+int deliver_bundles_to_application(struct registration_status *application);
 
 #ifdef __cplusplus
 }

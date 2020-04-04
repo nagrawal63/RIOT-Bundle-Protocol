@@ -133,6 +133,7 @@ struct actual_bundle{
   int num_of_blocks;
   uint32_t local_creation_time;
   uint8_t retention_constraint;
+  int iface; 
 };
 
 bool is_same_bundle(struct actual_bundle* current_bundle, struct actual_bundle* compare_to_bundle);
@@ -143,7 +144,7 @@ void calculate_primary_flag(uint64_t *flag, bool is_fragment, bool dont_fragment
 int calculate_canonical_flag(uint64_t *flag, bool replicate_block);
 
 struct actual_bundle* create_bundle(void);
-void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dest_eid, char* report_eid, uint32_t lifetime, int crc_type, char* service_num);
+void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dest_eid, char* report_eid, uint32_t lifetime, int crc_type, char* service_num, int iface);
 int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc);
 int bundle_decode(struct actual_bundle* bundle, uint8_t *buffer, size_t buf_len);
 int encode_primary_block(struct actual_bundle *bundle, nanocbor_encoder_t *enc);

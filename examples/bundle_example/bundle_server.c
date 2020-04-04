@@ -21,308 +21,110 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include <string.h>
 
-#include "net/gnrc.h"
-#include "net/gnrc/netif.h"
-#include "net/gnrc/netif/hdr.h"
-#include "net/gnrc/pktdump.h"
-#include "net/gnrc/convergence_layer.h"
+// #include "net/gnrc.h"
+// #include "net/gnrc/netif.h"
+// #include "net/gnrc/netif/hdr.h"
+// #include "net/gnrc/pktdump.h"
+// #include "net/gnrc/convergence_layer.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
-#include "net/gnrc/bundle_protocol/bundle_storage.h"
-#include "net/netdev/ieee802154.h"
+// #include "net/gnrc/bundle_protocol/bundle_storage.h"
+// #include "net/netdev/ieee802154.h"
+#include "net/gnrc/bundle_protocol/agent.h"
 #include "timex.h"
 #include "utlist.h"
+#include "msg.h"
 #include "xtimer.h"
 
-static gnrc_netreg_entry_t bundle_server = GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL, KERNEL_PID_UNDEF);
+// static gnrc_netreg_entry_t bundle_server = GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL, KERNEL_PID_UNDEF);
 
-static void send_bundle(char *dtn_dst, char *port_str, char *data)
-{
-  // gnrc_netif_t* netif = NULL;
-  // char* iface;
-  // uint16_t port;
-  (void) dtn_dst;
-  (void) port_str;
-  (void) data;
-
-  uint64_t payload_flag;
-  uint8_t *payload_data;
-  size_t data_len;
-
-  int iface = 9;
-  gnrc_netif_t *netif = NULL;
-  netif = gnrc_netif_get_by_pid(iface);
-
-  // Preparing the payload block
-  data_len = netif->l2addr_len + 1;
-  payload_data = (uint8_t*)malloc(data_len);
-  payload_data = netif->l2addr;
-  // payload_data[data_len] = '\0';
-  printf("Data to be added in the block is %s with size %d and addr len is %d.\n", payload_data, data_len, netif->l2addr_len);
-  for(int i=0;i<(int)data_len;i++){
-    printf("%02x",payload_data[i]);
-  }
-  printf(".\n");
-  if (calculate_canonical_flag(&payload_flag, false) < 0) {
-    printf("Error creating payload flag.\n");
-    return;
-  }
-
-  struct actual_bundle *bundle1;
-  if((bundle1= create_bundle()) == NULL){
-    printf("Could not create bundle.\n");
-    return;
-  }
-  print_bundle_storage();
-  fill_bundle(bundle1, 7, IPN, dtn_dst, "123", DUMMY_PAYLOAD_LIFETIME, CRC_32, "1");
-  // printf("primary block of bundle filled.\n");
-  bundle_add_block(bundle1, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);
-  
-  /* Creating bundle age block*/
-  size_t bundle_age_len;
-  uint8_t *bundle_age_data;
-  uint64_t bundle_age_flag;
-
-  if (calculate_canonical_flag(&bundle_age_flag, false) < 0) {
-    printf("Error creating payload flag.\n");
-    return ;
-  }
-
-  uint32_t initial_bundle_age = 0;
-  bundle_age_len = 1;
-  bundle_age_data = malloc(bundle_age_len * sizeof(char));
-  sprintf((char*)bundle_age_data, "%lu", initial_bundle_age);
-
-  bundle_add_block(bundle1, BUNDLE_BLOCK_TYPE_BUNDLE_AGE, bundle_age_flag, bundle_age_data, NOCRC, bundle_age_len);
-
-  //Bundle getting encoded
-  // nanocbor_encoder_t enc;
-  // nanocbor_encoder_init(&enc, NULL, 0);
-  // bundle_encode(bundle1, &enc);
-  // size_t required_size = nanocbor_encoded_len(&enc);
-  // uint8_t *buf = malloc(required_size);
-  // nanocbor_encoder_init(&enc, buf, required_size);
-  // bundle_encode(bundle1, &enc);
-  // printf("Encoded bundle: ");
-  // for(int i=0;i<(int)required_size;i++){
-  //   printf("%02x",buf[i]);
-  // }
-  // printf(" at %p\n", bundle1);
-  //
-  // gnrc_pktsnip_t *pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
-  // if (pkt == NULL) {
-  //   printf("unable to copy data to discovery packet buffer.\n");
-  //   delete_bundle(bundle1);
-  //   free(buf);
-  //   return ;
-  // }
-  //
-  // if (netif != NULL) {
-  //     gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
-  //     printf("netif hdr data is %s.\n",(char *)netif_hdr->data);
-  //     gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
-  //     LL_PREPEND(pkt, netif_hdr);
-  // }
-
-  if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, bundle1, GNRC_NETAPI_MSG_TYPE_SND)) {
-    printf("Unable to find BP thread.\n");
-    // gnrc_pktbuf_release(pkt);
-    delete_bundle(bundle1);
-    return ;
-  }
-
-
-  //Send bundle
-  // netdev_t *dev = netif->dev;
-  // uint8_t mhr[IEEE802154_MAX_HDR_LEN] = {0};
-  // // gnrc_netapi_send(iface,(gnrc_pktsnip_t*)buf);
-  // iolist_t iolist = {
-  //     .iol_next = (iolist_t *)buf,
-  //     .iol_base = mhr,
-  //     .iol_len = required_size
-  // };
-  // int res = dev->driver->send(dev, &iolist);
-  // printf("Result of sending finally is: %d.\n",res);
-}
-
-//
-// static void send(char *addr_str, char *port_str, char *data, unsigned int num,
-//                  unsigned int delay)
+// static void send_bundle(char *dtn_dst, char *port_str, char *data, )
 // {
-//     gnrc_netif_t *netif = NULL;
-//     char *iface;
-//     uint16_t port;
-//     ipv6_addr_t addr;
-//
-//     // printf("Address before parsing iface: %s.\n",addr_str);
-//     iface = ipv6_addr_split_iface(addr_str);
-//     if ((!iface) && (gnrc_netif_numof() == 1)) {
-//       printf("Interface is null.\n");
-//         netif = gnrc_netif_iter(NULL);
-//     }
-//     else if (iface) {
-//       printf("Interface is not null with value %d.\n", atoi(iface));
-//         netif = gnrc_netif_get_by_pid(atoi(iface));
-//     } else {
-//       printf("Falling back to 8.\n");
-//         netif = gnrc_netif_get_by_pid(8);
-//     }
-//     printf("iface is %d.\n",*iface);
-//     printf("netif is %s.\n", !netif?"not there":"there");
-//     // printf("Address after parsing iface: %s.\n",addr_str);
-//     /* parse destination address */
-//     if (ipv6_addr_from_str(&addr, addr_str) == NULL) {
-//         puts("Error: unable to parse destination address");
-//         return;
-//     }
-//     /* parse port */
-//     port = atoi(port_str);
-//     if (port == 0) {
-//         puts("Error: unable to parse destination port");
-//         return;
-//     }
-//
-//     for (unsigned int i = 0; i < num; i++) {
-//         gnrc_pktsnip_t *payload, *udp, *ip;
-//         unsigned payload_size;
-//         /* allocate payload */
-//         payload = gnrc_pktbuf_add(NULL, data, strlen(data), GNRC_NETTYPE_UNDEF);
-//         if (payload == NULL) {
-//             puts("Error: unable to copy data to packet buffer");
-//             return;
-//         }
-//         /* store size for output */
-//         payload_size = (unsigned)payload->size;
-//         /* allocate UDP header, set source port := destination port */
-//         udp = gnrc_udp_hdr_build(payload, port, port);
-//         if (udp == NULL) {
-//             puts("Error: unable to allocate UDP header");
-//             gnrc_pktbuf_release(payload);
-//             return;
-//         }
-//         /* allocate IPv6 header */
-//         ip = gnrc_ipv6_hdr_build(udp, NULL, &addr);
-//         if (ip == NULL) {
-//             puts("Error: unable to allocate IPv6 header");
-//             gnrc_pktbuf_release(udp);
-//             return;
-//         }
-//         /* add netif header, if interface was given */
-//         if (netif != NULL) {
-//             gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
-//
-//             gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
-//             LL_PREPEND(ip, netif_hdr);
-//         }
-//         /* send packet */
-//         if (!gnrc_netapi_dispatch_send(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, ip)) {
-//             puts("Error: unable to locate UDP thread");
-//             gnrc_pktbuf_release(ip);
-//             return;
-//         }
-//         /* access to `payload` was implicitly given up with the send operation above
-//          * => use temporary variable for output */
-//         printf("Success: sent %u byte(s) to [%s]:%u\n", payload_size, addr_str,
-//                port);
-//         xtimer_usleep(delay);
-//     }
+//   // gnrc_netif_t* netif = NULL;
+//   // char* iface;
+//   // uint16_t port;
+//   (void) dtn_dst;
+//   (void) port_str;
+//   (void) data;
+
+//   uint64_t payload_flag;
+//   uint8_t *payload_data;
+//   size_t data_len;
+
+//   int iface = 9;
+//   gnrc_netif_t *netif = NULL;
+//   netif = gnrc_netif_get_by_pid(iface);
+
+//   // Preparing the payload block
+//   data_len = netif->l2addr_len + 1;
+//   payload_data = data;
+//   // payload_data[data_len] = '\0';
+//   printf("Data to be added in the block is %s with size %d and addr len is %d.\n", payload_data, data_len, netif->l2addr_len);
+//   for(int i=0;i<(int)data_len;i++){
+//     printf("%02x",payload_data[i]);
+//   }
+//   printf(".\n");
+//   if (calculate_canonical_flag(&payload_flag, false) < 0) {
+//     printf("Error creating payload flag.\n");
+//     return;
+//   }
+
+//   struct actual_bundle *bundle1;
+//   if((bundle1= create_bundle()) == NULL){
+//     printf("Could not create bundle.\n");
+//     return;
+//   }
+//   print_bundle_storage();
+//   fill_bundle(bundle1, 7, IPN, dtn_dst, "123", DUMMY_PAYLOAD_LIFETIME, CRC_32, "1234");
+//   // printf("primary block of bundle filled.\n");
+//   bundle_add_block(bundle1, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);
+  
+//   /* Creating bundle age block*/
+//   size_t bundle_age_len;
+//   uint8_t *bundle_age_data;
+//   uint64_t bundle_age_flag;
+
+//   if (calculate_canonical_flag(&bundle_age_flag, false) < 0) {
+//     printf("Error creating payload flag.\n");
+//     return ;
+//   }
+
+//   uint32_t initial_bundle_age = 0;
+//   bundle_age_len = 1;
+//   bundle_age_data = malloc(bundle_age_len * sizeof(char));
+//   sprintf((char*)bundle_age_data, "%lu", initial_bundle_age);
+
+//   bundle_add_block(bundle1, BUNDLE_BLOCK_TYPE_BUNDLE_AGE, bundle_age_flag, bundle_age_data, NOCRC, bundle_age_len);
+
+
+
+//   if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, bundle1, GNRC_NETAPI_MSG_TYPE_SND)) {
+//     printf("Unable to find BP thread.\n");
+//     delete_bundle(bundle1);
+//     return ;
+//   }
 // }
-
-static void start_bundle_server(char *port_str)
-{
-    uint16_t port;
-    /*  This is required so that when the packets are passed on to the upper layers when received, then the driver code passes on by attaching
-     *  the packet type to be GNRC_NETTYPE_BP and not GNRC_NETTYPE_SIXLOWPAN.
-     */
-    /* Ask how to manage GNRC_NETTYPE_BP and GNRC_NETTYPE_CONTACT_MANAGER here
-    * I have the idea the packet is passed on as GNRC_NETTYPE_BP and then there is some distinguishing feature which helps identify it as
-    * GNRC_NETTYPE_CONTACT_MANAGER and not GNRC_NETTYPE_BP
-    * netdev_ieee802154_set((netdev_ieee802154_t *)dev, NETOPT_PROTO, (void *)GNR_NETTYPE_BP,sizeof(GNRC_NETTYPE_BP));
-    *
-    * For now only sending the packet through the SIXLOWPAN layer
-     */
-    // int nettype = GNRC_NETTYPE_BP;
-    // int iface = 9;
-    // printf("Changing protocol of netdev for hardcoded interface %d.\n", iface);
-    // gnrc_netif_t *netif = gnrc_netif_get_by_pid(iface);
-    // netdev_t *dev = netif->dev;
-    // ((netdev_ieee802154_t*)dev)->proto = GNRC_NETTYPE_BP;
-
-
-
-    /* check if bundle_server is already running */
-    if (bundle_server.target.pid != KERNEL_PID_UNDEF) {
-        printf("Error: bundle_server already running on port %" PRIu32 "\n",
-               bundle_server.demux_ctx);
-        return;
-    }
-    /* parse port */
-    port = atoi(port_str);
-    if (port == 0) {
-        puts("Error: invalid port specified");
-        return;
-    }
-    /* start bundle_server (which means registering pktdump for the chosen port) */
-    bundle_server.target.pid = gnrc_pktdump_pid;
-    bundle_server.demux_ctx = (uint32_t)port;
-    gnrc_netreg_register(GNRC_NETTYPE_BP, &bundle_server);
-    printf("Success: started bundle_server on port %" PRIu16 "\n", port);
-}
-
-static void stop_bundle_server(void)
-{
-    /* check if bundle_server is running at all */
-    if (bundle_server.target.pid == KERNEL_PID_UNDEF) {
-        printf("Error: bundle_server was not running\n");
-        return;
-    }
-    /* stop bundle_server */
-    gnrc_netreg_unregister(GNRC_NETTYPE_BP, &bundle_server);
-    bundle_server.target.pid = KERNEL_PID_UNDEF;
-    puts("Success: stopped bundle_server");
-}
 
 int bundle_cmd(int argc, char **argv)
 {
     if (argc < 2) {
-        printf("usage: %s [send|bundle_server]\n", argv[0]);
+        printf("usage: %s [send|receive]\n", argv[0]);
         return 1;
     }
 
     if (strcmp(argv[1], "send") == 0) {
-        // uint32_t num = 1;
-        // uint32_t delay = 1000000;
-        if (argc < 5) {
-            printf("usage: %s send <addr> <port> <data> [<num> [<delay in us>]]\n",
-                   argv[0]);
-            return 1;
-        }
-        // if (argc > 5) {
-        //     num = atoi(argv[5]);
-        // }
-        // if (argc > 6) {
-        //     delay = atoi(argv[6]);
-        // }
-        send_bundle(argv[2], argv[3], argv[4]);
+      if (argc < 5) {
+          printf("usage: %s send <addr> <port> <data> <data_len>\n",
+                 argv[0]);
+          return 1;
+      }
+      send_bundle((uint8_t *)argv[4], atoi(argv[5]),argv[2], argv[3], 9, "1", NOCRC, DUMMY_PAYLOAD_LIFETIME);
     }
-    else if (strcmp(argv[1], "bundle_server") == 0) {
-        if (argc < 3) {
-            printf("usage: %s bundle_server [start|stop]\n", argv[0]);
-            return 1;
-        }
-        if (strcmp(argv[2], "start") == 0) {
-            if (argc < 4) {
-                printf("usage %s bundle_server start <port>\n", argv[0]);
-                return 1;
-            }
-            start_bundle_server(argv[3]);
-        }
-        else if (strcmp(argv[2], "stop") == 0) {
-            stop_bundle_server();
-        }
-        else {
-            puts("error: invalid command");
-        }
+    else if (strcmp(argv[1], "receive") == 0) {
+      msg_t msg;
+      int res = msg_try_receive(&msg);
+      printf("received message with data = %s with res = %d.\n", (char *)msg.content.ptr, res);
     }
     else {
         puts("error: invalid command");
