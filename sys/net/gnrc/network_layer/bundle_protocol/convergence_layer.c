@@ -123,7 +123,6 @@ bool is_packet_ack(gnrc_pktsnip_t *pkt) {
 
 static void _receive(gnrc_pktsnip_t *pkt) 
 {
-  DEBUG("convergence_layer: Receive type: %d with length: %d and data: %s\n",pkt->type, pkt->size, (uint8_t*)pkt->data);
   struct router *cur_router;
 
   cur_router = get_router();
@@ -246,8 +245,6 @@ static void _receive(gnrc_pktsnip_t *pkt)
           free(buf);
           return ;
         }
-        /* TODO: Think of the case when the data is sent to no node, then free the space allocated for the 
-            encoded bundle*/
         LL_FOREACH(neighbors_to_send, temp) {
           if (temp->endpoint_scheme == IPN && temp->endpoint_num != (uint32_t)atoi(get_src_num())) {
             DEBUG("convergence_layer:Forwarding packet to neighbor with eid %lu.\n", temp->endpoint_num);
@@ -280,13 +277,11 @@ static void _send(struct actual_bundle *bundle)
     set_retention_constraint(bundle, DISPATCH_PENDING_RETENTION_CONSTRAINT);
     struct router *cur_router = get_router();
     struct neighbor_t *temp;
-    // DEBUG("convergence_layer: Send type: %d\n",bundle->primary_block.version);
 
     gnrc_netif_t *netif = NULL;
     nanocbor_encoder_t enc;
 
     netif = gnrc_netif_get_by_pid(iface);
-    // DEBUG("convergence_layer: Sending bundle to hardcoded interface %d.\n", iface);
 
     struct neighbor_t *neighbor_list_to_send = cur_router->route_receivers(bundle->primary_block.dst_num);
     print_potential_neighbor_list(neighbor_list_to_send);
@@ -328,7 +323,6 @@ static void _send(struct actual_bundle *bundle)
           LL_PREPEND(pkt, netif_hdr);
         }
         if (netif->pid != 0) {
-          // DEBUG("convergence_layer: Sending packet to process with pid %d.\n", netif->pid);
           gnrc_netapi_send(netif->pid, pkt);
         }
       } 
@@ -338,15 +332,12 @@ static void _send(struct actual_bundle *bundle)
             DEBUG("convergence_layer: Already delivered bundle with creation time %lu to %s", bundle->local_creation_time, temp->l2addr);
           }
           else {
-            // DEBUG("convergence_layer: Sending bundle to neighbor.\n");
             if (netif != NULL) {
               gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
-              // DEBUG("convergence_layer: netif hdr data is %s.\n",(char *)netif_hdr->data);
               gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
               LL_PREPEND(pkt, netif_hdr);
             }
             if (netif->pid != 0) {
-              // DEBUG("convergence_layer: Sending packet to process with pid %d.\n", netif->pid);
               gnrc_netapi_send(netif->pid, pkt);
             }
           }
@@ -364,7 +355,6 @@ static void _send_packet(gnrc_pktsnip_t *pkt)
   netif = gnrc_netif_hdr_get_netif(pkt->data);
 
   if (netif->pid != 0) {
-    DEBUG("convergence_layer: Sending discovery packet to process with pid %d.\n", netif->pid);
     gnrc_netapi_send(netif->pid, pkt);
   }
 }
@@ -410,7 +400,6 @@ static void *_event_loop(void *args)
 }
 
 static void retransmit_timer_callback(void *args) {
-  printf("convergence_layer: inside retransmit_timer_callback and current process running is %d.\n", thread_getpid());
   (void) args;
   struct bundle_list *bundle_storage_list = get_bundle_list(), *temp;
   uint8_t active_bundles = get_current_active_bundles(), i = 0;
@@ -418,8 +407,6 @@ static void retransmit_timer_callback(void *args) {
   while (temp != NULL && i < active_bundles && get_retention_constraint(&temp->current_bundle) == NO_RETENTION_CONSTRAINT && temp->current_bundle.primary_block.dst_num != strtoul(get_src_num(), NULL, 10)) {
     if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, &temp->current_bundle, GNRC_NETAPI_MSG_TYPE_SND)) {
       printf("convergence_layer: Unable to find BP thread.\n");
-      // gnrc_pktbuf_release(pkt);
-      // delete_bundle(bundle1);
       return ;
     }
     temp = temp->next;
@@ -439,16 +426,11 @@ static void print_potential_neighbor_list(struct neighbor_t* neighbors) {
 }
 
 void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
-    DEBUG("convergence_layer: sending bundles to new neighbor.\n");
     struct bundle_list *bundle_store_list, *temp_bundle;
 
     bundle_store_list = get_bundle_list();
-    print_bundle_storage();
     temp_bundle = bundle_store_list;
     while(temp_bundle != NULL) {
-    // LL_FOREACH(bundle_store_list, temp_bundle){
-      print_bundle_storage();
-      DEBUG("convergence_layer: Sending this bundle to new neighbor with destination: %lu and local_creation_time: %lu.\n", temp_bundle->current_bundle.primary_block.dst_num, temp_bundle->current_bundle.local_creation_time);
       if(temp_bundle->current_bundle.primary_block.dst_num != (uint32_t)atoi(BROADCAST_EID)) {
 
         gnrc_netif_t *netif = NULL;
@@ -461,7 +443,6 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
         if(bundle_age_block != NULL) {
           original_bundle_age = atoi((char*)bundle_age_block->block_data);
           if(increment_bundle_age(bundle_age_block, &temp_bundle->current_bundle) < 0) {
-            DEBUG("convergence_layer: Error updating bundle age.\n");
             struct bundle_list *next_bundle = temp_bundle->next;
             delete_bundle(&temp_bundle->current_bundle);
             temp_bundle = next_bundle;
@@ -493,7 +474,6 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
         
        if (netif != NULL) {
             gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, neighbor->l2addr, neighbor->l2addr_len);
-            // DEBUG("bp: netif hdr data is %s.\n",(char *)netif_hdr->data);
             gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
             LL_PREPEND(pkt, netif_hdr);
         }
@@ -516,7 +496,6 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
 }
 
 void send_non_bundle_ack(struct actual_bundle *bundle) {
-
   gnrc_netif_t *netif = NULL;
   gnrc_pktsnip_t *ack_payload;
   
@@ -531,33 +510,25 @@ void send_non_bundle_ack(struct actual_bundle *bundle) {
 
   neighbor_src = get_neighbor_from_endpoint_num(bundle->primary_block.src_num);
   if (netif != NULL) {
-      DEBUG("convergence_layer: Adding netif header");
       gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, neighbor_src->l2addr, neighbor_src->l2addr_len);
 
       gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
       LL_PREPEND(ack_payload, netif_hdr);
   }
   if (netif->pid != 0) {
-    DEBUG("convergence_layer: Sending stored packet to process with pid %d.\n", netif->pid);
     gnrc_netapi_send(netif->pid, ack_payload);
   }
 }
 
 void send_ack(struct actual_bundle *bundle) {
-  // DEBUG("bp: Inside send ack function.\n");
   int lifetime = 1;
   struct actual_bundle *ack_bundle;
   uint64_t payload_flag;
   uint8_t *payload_data;
   size_t data_len, dst_len, report_len, service_len;
-  // DEBUG("bp: dst_num = %lu, report_num = %lu, service_num = %lu.\n", bundle->primary_block.src_num, bundle->primary_block.report_num, bundle->primary_block.service_num);
-  // DEBUG("bp: will start calculting dst_len.\n");
   dst_len = calculate_size_of_num(bundle->primary_block.src_num);
-  // DEBUG("bp: dst_len = %u\n", dst_len); 
   report_len = calculate_size_of_num(bundle->primary_block.report_num);
-  // DEBUG("bp: report_len = %u.\n", report_len);
   service_len = calculate_size_of_num(bundle->primary_block.service_num);
-  // DEBUG("bp: service_len = %u.\n", service_len);
 
   char buf_dst[dst_len], buf_report[report_len], buf_service[service_len];
 
@@ -569,13 +540,9 @@ void send_ack(struct actual_bundle *bundle) {
     DEBUG("convergence_layer: Error creating payload flag.\n");
     return;
   }
-  DEBUG("convergence_layer: sprinting for ackssssss.\n");  
-  // sscanf(buf_dst, "%lu", &bundle->primary_block.src_num);
   sprintf(buf_dst, "%lu", bundle->primary_block.src_num);
   sprintf(buf_report, "%lu", bundle->primary_block.report_num);
   sprintf(buf_service, "%lu", bundle->primary_block.service_num);
-  // DEBUG("bp: sprinted values: %s, %s, %s; actual nums: %lu, %lu, %lu.\n", buf_dst, buf_report, buf_service, bundle->primary_block.src_num, bundle->primary_block.report_num, bundle->primary_block.service_num);
-  // DEBUG("bp: Creating bundle for ack");
   ack_bundle = create_bundle();
   fill_bundle(ack_bundle, 7, IPN, buf_dst, buf_report, lifetime, bundle->primary_block.crc_type, buf_service, iface);
   bundle_add_block(ack_bundle, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);

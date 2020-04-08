@@ -14,8 +14,6 @@ struct bundle_list{
   struct bundle_list* next;
   uint8_t num_of_bundles;
   uint32_t unique_id;
-  // uint8_t next_block_number;
-  // uint8_t next_empty_index;
 };
 
 

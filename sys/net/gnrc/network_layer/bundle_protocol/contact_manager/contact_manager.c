@@ -40,7 +40,7 @@ kernel_pid_t gnrc_contact_manager_init(void)
 
   _pid = thread_create(_stack, sizeof(_stack), GNRC_CONTACT_MANAGER_PRIO, THREAD_CREATE_STACKTEST, _event_loop, NULL, "contact_manager");
 
-  // DEBUG("contact_manager: Thread created with pid: %d.\n", _pid);
+  DEBUG("contact_manager: Thread created with pid: %d.\n", _pid);
   return _pid;
 }
 
@@ -186,13 +186,13 @@ static void *_event_loop(void *args)
 static int comparator (struct neighbor_t *neighbor, struct neighbor_t *compare_to_neighbor)
 {
   int res = -1;
-  char addr_str[GNRC_NETIF_HDR_L2ADDR_PRINT_LEN];
+  // char addr_str[GNRC_NETIF_HDR_L2ADDR_PRINT_LEN];
   if (neighbor->endpoint_scheme == compare_to_neighbor->endpoint_scheme) {
     if (neighbor->endpoint_scheme == IPN) {
       if(neighbor->endpoint_num == compare_to_neighbor->endpoint_num) {
         if(neighbor-> l2addr_len == compare_to_neighbor->l2addr_len && memcmp(neighbor->l2addr, compare_to_neighbor->l2addr, neighbor->l2addr_len) == 0){
-          DEBUG("contact_manager : Neighbor addr: %s.\n", gnrc_netif_addr_to_str(neighbor->l2addr, neighbor->l2addr_len, addr_str));
-          DEBUG("contact_manager : compare to neighbor addr: %s.\n", gnrc_netif_addr_to_str(compare_to_neighbor->l2addr, compare_to_neighbor->l2addr_len, addr_str));
+          // DEBUG("contact_manager : Neighbor addr: %s.\n", gnrc_netif_addr_to_str(neighbor->l2addr, neighbor->l2addr_len, addr_str));
+          // DEBUG("contact_manager : compare to neighbor addr: %s.\n", gnrc_netif_addr_to_str(compare_to_neighbor->l2addr, compare_to_neighbor->l2addr_len, addr_str));
           return 0;
         }
       }
@@ -253,11 +253,7 @@ void create_neighbor_expiry_timer(struct neighbor_t *neighbor) {
 }
 
 static void timer_expiry_callback (void *args) {
-  (void) args;
-  // printf("contact_manager: Going to delete neighbor with id: %lu on thread %s.\n", ((struct neighbor_t*)args)->endpoint_num, thread_getname(thread_getpid()));
   LL_DELETE(head_of_neighbors, ((struct neighbor_t*)args));
-  // printf("contact_manager: neighbor list after deleting.\n");
-  // print_neighbor_list();
 }
 
 bool is_same_neighbor(struct neighbor_t *neighbor, struct neighbor_t *compare_to_neighbor) {

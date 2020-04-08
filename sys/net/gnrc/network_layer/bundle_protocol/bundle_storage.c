@@ -38,7 +38,7 @@ struct actual_bundle* get_space_for_bundle(void)
   struct bundle_list *ret = NULL;
   if(free_list == NULL){
     DEBUG("bundle_storage: Bundle storage is full, deleting oldest bundle.\n");
-    print_bundle_storage();
+    // print_bundle_storage();
     struct bundle_list *oldest_bundle = find_oldest_bundle_to_purge();
     if(delete_bundle(&oldest_bundle->current_bundle)) {
       DEBUG("bundle_storage: deleted oldest bundle .\n");

@@ -35,7 +35,6 @@ kernel_pid_t gnrc_contact_scheduler_periodic_init(void)
   }
 
   _pid = thread_create(_stack, sizeof(_stack), GNRC_CONTACT_SCHEDULER_PRIO, THREAD_CREATE_STACKTEST, contact_scheduler, NULL, "contact_scheduler");
-  // to be part of bundle_agent
 
   DEBUG("contact_scheduler: Thread created with pid: %d.\n", _pid);
   return _pid;
@@ -108,13 +107,13 @@ int send(int data)
       gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
       LL_PREPEND(discovery_packet, netif_hdr);
   }
-
+  DEBUG("contact_scheduler_periodic: Sending discovery packet.\n");
   if(!gnrc_netapi_dispatch_send(GNRC_NETTYPE_CONTACT_MANAGER, GNRC_NETREG_DEMUX_CTX_ALL, discovery_packet)) {
     DEBUG("contact_scheduler: Unable to find BP thread.\n");
     gnrc_pktbuf_release(discovery_packet);
     return ERROR;
   }
-  print_bundle_storage();
+  // print_bundle_storage();
   free(payload_data);
   set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
   delete_bundle(bundle);

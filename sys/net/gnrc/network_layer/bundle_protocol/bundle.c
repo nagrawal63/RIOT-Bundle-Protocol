@@ -16,21 +16,21 @@ static uint8_t sequence_num = 0;
 static bool is_fragment_bundle(struct actual_bundle* bundle);
 static int decode_primary_block_element(nanocbor_value_t *decoder, struct actual_bundle* bundle, uint8_t element);
 static int decode_canonical_block_element(nanocbor_value_t* decoder, struct bundle_canonical_block_t* block, uint8_t element);
-static void print_canonical_block_list(struct actual_bundle *bundle) ;
+// static void print_canonical_block_list(struct actual_bundle *bundle) ;
 
 
-static void print_canonical_block_list(struct actual_bundle *bundle) {
-  struct bundle_canonical_block_t *temp = bundle->other_blocks;
-  int i = 0;
-  DEBUG("Bundle: Block list ==>>");
-  while (i < bundle->num_of_blocks) {
-    temp = &bundle->other_blocks[i];
-    DEBUG("%d->", temp->type);
-    i++;
-  }
-  DEBUG(".\n");
-  return ;
-}
+// static void print_canonical_block_list(struct actual_bundle *bundle) {
+//   struct bundle_canonical_block_t *temp = bundle->other_blocks;
+//   int i = 0;
+//   DEBUG("Bundle: Block list ==>>");
+//   while (i < bundle->num_of_blocks) {
+//     temp = &bundle->other_blocks[i];
+//     DEBUG("%d->", temp->type);
+//     i++;
+//   }
+//   DEBUG(".\n");
+//   return ;
+// }
 
 bool is_same_bundle(struct actual_bundle* current_bundle, struct actual_bundle* compare_to_bundle)
 {
@@ -71,12 +71,12 @@ int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc)
 
   //parsing and encoding primary block
   encode_primary_block(bundle, enc);
-  DEBUG("bundle: Trying to encode canonical blocks.\n");
+  // DEBUG("bundle: Trying to encode canonical blocks.\n");
   //encoding canonical blocks
   struct bundle_canonical_block_t* tempPtr = bundle->other_blocks;
   int i = 0;
   while(i < bundle->num_of_blocks){
-    DEBUG("bundle: Inserting canonical block.\n");
+    // DEBUG("bundle: Inserting canonical block.\n");
     encode_canonical_block(&tempPtr[i], enc);
     i++;
   }
@@ -926,7 +926,7 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
   bool dont_fragment = true;
 
   calculate_primary_flag(&primary_flag, is_fragment, dont_fragment);
-  DEBUG("bundle: value of flag while setting is '%lld'.\n", primary_flag);
+  // DEBUG("bundle: value of flag while setting is '%lld'.\n", primary_flag);
   
   // Setting the primary block fields first
   if(!bundle_set_attribute(bundle, VERSION, &version)){
@@ -995,7 +995,7 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
   }else{
     // TODO: Implement creation_timestamp thing if the node actually has clock
   }
-  DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
+  // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
 
   if(!bundle_set_attribute(bundle, LIFETIME, &lifetime)){
     DEBUG("bundle: Could not set bundle lifetime.\n");
@@ -1105,15 +1105,15 @@ int bundle_add_block(struct actual_bundle* bundle, uint8_t type, uint64_t flags,
       }
       break;
   }
-  DEBUG("bundle: Inside bundle_add_block before copying block data.\n");
+  // DEBUG("bundle: Inside bundle_add_block before copying block data.\n");
   memcpy(block->block_data, data, data_len);
   block->data_len = data_len;
   // block.next = NULL;
-  DEBUG("bundle: Data copying inside bundle over.\n");
+  // DEBUG("bundle: Data copying inside bundle over.\n");
   // insert_block_in_bundle(bundle, &block);
   bundle->num_of_blocks++;
-  DEBUG("bundle: Block inserted.\n");
-  print_canonical_block_list(bundle);
+  // DEBUG("bundle: Block inserted.\n");
+  // print_canonical_block_list(bundle);
   return 1;
 }
 
