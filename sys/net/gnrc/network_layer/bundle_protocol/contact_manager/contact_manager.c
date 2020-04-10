@@ -253,6 +253,7 @@ void create_neighbor_expiry_timer(struct neighbor_t *neighbor) {
 }
 
 static void timer_expiry_callback (void *args) {
+  printf("contact_manager: Deleting expired neighbor.\n");
   LL_DELETE(head_of_neighbors, ((struct neighbor_t*)args));
 }
 

@@ -142,7 +142,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
     src_addr_len = gnrc_netif_hdr_get_srcaddr(pkt, &temp_addr);
     uint8_t src_addr[src_addr_len];
     strncpy((char*)src_addr, (char*)temp_addr, src_addr_len);
-    DEBUG("convergence_layer: src addr from netif hdr %s.\n", src_addr);
+    // DEBUG("convergence_layer: src addr from netif hdr %s.\n", src_addr);
 
     struct neighbor_t *neighbor = get_neighbor_from_l2addr(src_addr);
 
@@ -163,13 +163,12 @@ static void _receive(gnrc_pktsnip_t *pkt)
       return ;
     }
     if (check_lifetime_expiry(bundle)) {
-      DEBUG("convergence_layer: received bundle's lifetime expired.\n");
+      DEBUG("convergence_layer: received bundle's lifetime expired and has been deleted from storage.\n");
       return ;
     }
 
 #ifdef MODULE_GNRC_CONTACT_MANAGER
     if (bundle->primary_block.service_num  == (uint32_t)atoi(CONTACT_MANAGER_SERVICE_NUM)) {
-      // gnrc_pktsnip_t *tmp_pkt = gnrc_pktbuf_add(NULL, bundle, sizeof(bundle), GNRC_NETTYPE_CONTACT_MANAGER);
       if (!gnrc_bp_dispatch(GNRC_NETTYPE_CONTACT_MANAGER, GNRC_NETREG_DEMUX_CTX_ALL, bundle, GNRC_NETAPI_MSG_TYPE_RCV)) {
         DEBUG("convergence_layer: no contact_manager thread found\n");
         delete_bundle(bundle);
@@ -245,6 +244,11 @@ static void _receive(gnrc_pktsnip_t *pkt)
           free(buf);
           return ;
         }
+
+        /*
+          Handling not sending to source node since the solution would require more malloc
+          and space is problem on these low power nodes
+        */
         LL_FOREACH(neighbors_to_send, temp) {
           if (temp->endpoint_scheme == IPN && temp->endpoint_num != (uint32_t)atoi(get_src_num())) {
             DEBUG("convergence_layer:Forwarding packet to neighbor with eid %lu.\n", temp->endpoint_num);
@@ -263,6 +267,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
         }
         set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
         if(!sent) {
+          DEBUG("convergence_layer: bundle not sent, deleting from encoded buffer.\n");
           free(buf);
         }
       }
@@ -284,6 +289,7 @@ static void _send(struct actual_bundle *bundle)
     netif = gnrc_netif_get_by_pid(iface);
 
     struct neighbor_t *neighbor_list_to_send = cur_router->route_receivers(bundle->primary_block.dst_num);
+    DEBUG("convergence_layer: Printing potential neighbor list: .\n");
     print_potential_neighbor_list(neighbor_list_to_send);
     if (neighbor_list_to_send == NULL) {
       DEBUG("convergence_layer: Could not find neighbors to send bundle to.\n");
@@ -400,6 +406,7 @@ static void *_event_loop(void *args)
 }
 
 static void retransmit_timer_callback(void *args) {
+  printf("convergence_layer: Inside retransmit timer callback.\n");
   (void) args;
   struct bundle_list *bundle_storage_list = get_bundle_list(), *temp;
   uint8_t active_bundles = get_current_active_bundles(), i = 0;
