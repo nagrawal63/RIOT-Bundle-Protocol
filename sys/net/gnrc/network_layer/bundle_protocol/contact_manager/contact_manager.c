@@ -220,7 +220,7 @@ void print_neighbor_list(void) {
 }
 
 struct neighbor_t *get_neighbor_from_endpoint_num(uint32_t endpoint_num) {
-  struct neighbor_t * temp ;
+  struct neighbor_t * temp = NULL;
   LL_SEARCH_SCALAR(head_of_neighbors, temp, endpoint_num, endpoint_num);
   return temp;
 }
@@ -253,7 +253,7 @@ void create_neighbor_expiry_timer(struct neighbor_t *neighbor) {
 }
 
 static void timer_expiry_callback (void *args) {
-  printf("contact_manager: Deleting expired neighbor.\n");
+  printf("contact_manager: Deleting expired neighbor with eid %lu.\n", ((struct neighbor_t*)args)->endpoint_num);
   LL_DELETE(head_of_neighbors, ((struct neighbor_t*)args));
 }
 

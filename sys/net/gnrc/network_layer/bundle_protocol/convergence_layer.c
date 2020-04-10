@@ -289,7 +289,7 @@ static void _send(struct actual_bundle *bundle)
     netif = gnrc_netif_get_by_pid(iface);
 
     struct neighbor_t *neighbor_list_to_send = cur_router->route_receivers(bundle->primary_block.dst_num);
-    DEBUG("convergence_layer: Printing potential neighbor list: .\n");
+    DEBUG("convergence_layer: Printing potential neighbor list: \n");
     print_potential_neighbor_list(neighbor_list_to_send);
     if (neighbor_list_to_send == NULL) {
       DEBUG("convergence_layer: Could not find neighbors to send bundle to.\n");
@@ -320,8 +320,9 @@ static void _send(struct actual_bundle *bundle)
     LL_FOREACH(neighbor_list_to_send, temp) {
       struct delivered_bundle_list *ack_list, *temp_ack_list;
       ack_list = cur_router->get_delivered_bundle_list();
-      if (ack_list == NULL) {
+      if (ack_list == NULL && temp->endpoint_scheme == IPN && temp->endpoint_num != (uint32_t)atoi(get_src_num())) {
         DEBUG("convergence_layer: Sending bundle to neighbor since ack list is null.\n");
+        DEBUG("convergence_layer:Sending packet to neighbor with eid %lu.\n", temp->endpoint_num);
         if (netif != NULL) {
           gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
           // DEBUG("convergence_layer: netif hdr data is %s.\n",(char *)netif_hdr->data);
@@ -333,19 +334,23 @@ static void _send(struct actual_bundle *bundle)
         }
       } 
       else {
+        bool found = false;
         LL_FOREACH(ack_list, temp_ack_list) {
           if ((is_same_bundle(bundle, temp_ack_list->bundle) && is_same_neighbor(temp, temp_ack_list->neighbor))) {
-            DEBUG("convergence_layer: Already delivered bundle with creation time %lu to %s", bundle->local_creation_time, temp->l2addr);
+            DEBUG("convergence_layer: Already delivered bundle with creation time %lu to %s, breaking out of loop of ack_list", bundle->local_creation_time, temp->l2addr);
+            found = true;
+            break;
           }
-          else {
-            if (netif != NULL) {
-              gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
-              gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
-              LL_PREPEND(pkt, netif_hdr);
-            }
-            if (netif->pid != 0) {
-              gnrc_netapi_send(netif->pid, pkt);
-            }
+        }
+        if (!found && temp->endpoint_scheme == IPN && temp->endpoint_num != (uint32_t)atoi(get_src_num())) {
+          DEBUG("convergence_layer:Sending packet with src eid : %lu to neighbor with eid %lu.\n", bundle->primary_block.src_num, temp->endpoint_num);
+          if (netif != NULL) {
+            gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
+            gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
+            LL_PREPEND(pkt, netif_hdr);
+          }
+          if (netif->pid != 0) {
+            gnrc_netapi_send(netif->pid, pkt);
           }
         }
       }
@@ -503,6 +508,7 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
 }
 
 void send_non_bundle_ack(struct actual_bundle *bundle) {
+  DEBUG("convergence_layer: Sending acknowledgement.\n");
   gnrc_netif_t *netif = NULL;
   gnrc_pktsnip_t *ack_payload;
   
@@ -516,11 +522,15 @@ void send_non_bundle_ack(struct actual_bundle *bundle) {
   ack_payload = gnrc_pktbuf_add(NULL, data, strlen(data), GNRC_NETTYPE_UNDEF);
 
   neighbor_src = get_neighbor_from_endpoint_num(bundle->primary_block.src_num);
-  if (netif != NULL) {
+
+  if (netif != NULL && neighbor_src != NULL) {
       gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, neighbor_src->l2addr, neighbor_src->l2addr_len);
 
       gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
       LL_PREPEND(ack_payload, netif_hdr);
+  }
+  else if (neighbor_src == NULL) {
+    DEBUG("convergence_layer: Couldn't find neighbor in list while sending acknowledgement.\n");
   }
   if (netif->pid != 0) {
     gnrc_netapi_send(netif->pid, ack_payload);
