@@ -221,6 +221,8 @@ void print_neighbor_list(void) {
 
 struct neighbor_t *get_neighbor_from_endpoint_num(uint32_t endpoint_num) {
   struct neighbor_t * temp = NULL;
+  DEBUG("contact_manager: Inside get_neighbor_from_endpoint_num() \n");
+  print_neighbor_list();
   LL_SEARCH_SCALAR(head_of_neighbors, temp, endpoint_num, endpoint_num);
   return temp;
 }

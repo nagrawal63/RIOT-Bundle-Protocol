@@ -351,7 +351,7 @@ static void _send(struct actual_bundle *bundle)
         bool found = false;
         LL_FOREACH(ack_list, temp_ack_list) {
           if ((is_same_bundle(bundle, temp_ack_list->bundle) && is_same_neighbor(temp, temp_ack_list->neighbor))) {
-            DEBUG("convergence_layer: Already delivered bundle with creation time %lu to %s, breaking out of loop of ack_list.\n", bundle->local_creation_time, temp->l2addr);
+            DEBUG("convergence_layer: Already delivered bundle with creation time %lu to %lu, breaking out of loop of ack_list.\n", bundle->local_creation_time, temp->endpoint_num);
             found = true;
             break;
           }
@@ -534,7 +534,7 @@ void send_non_bundle_ack(struct actual_bundle *bundle) {
   gnrc_pktsnip_t *ack_payload;
   
   char data[MAX_ACK_SIZE];
-  struct neighbor_t *neighbor_src;
+  struct neighbor_t *neighbor_src = NULL;
 
   netif = gnrc_netif_get_by_pid(iface);
 
