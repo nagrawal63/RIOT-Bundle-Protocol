@@ -250,7 +250,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
           and space is problem on these low power nodes
         */
         LL_FOREACH(neighbors_to_send, temp) {
-          if (temp->endpoint_scheme == IPN && temp->endpoint_num != (uint32_t)atoi(get_src_num())) {
+          if (temp->endpoint_scheme == IPN && temp->endpoint_num != bundle->primary_block.src_num) {
             DEBUG("convergence_layer:Forwarding packet to neighbor with eid %lu.\n", temp->endpoint_num);
             sent = true;
             if (netif != NULL) {
@@ -320,7 +320,7 @@ static void _send(struct actual_bundle *bundle)
     LL_FOREACH(neighbor_list_to_send, temp) {
       struct delivered_bundle_list *ack_list, *temp_ack_list;
       ack_list = cur_router->get_delivered_bundle_list();
-      if (ack_list == NULL && temp->endpoint_scheme == IPN && temp->endpoint_num != (uint32_t)atoi(get_src_num())) {
+      if (ack_list == NULL && temp->endpoint_scheme == IPN && temp->endpoint_num != bundle->primary_block.src_num) {
         DEBUG("convergence_layer: Sending bundle to neighbor since ack list is null.\n");
         DEBUG("convergence_layer:Sending packet to neighbor with eid %lu.\n", temp->endpoint_num);
         if (netif != NULL) {
@@ -342,7 +342,7 @@ static void _send(struct actual_bundle *bundle)
             break;
           }
         }
-        if (!found && temp->endpoint_scheme == IPN && temp->endpoint_num != (uint32_t)atoi(get_src_num())) {
+        if (!found && temp->endpoint_scheme == IPN && temp->endpoint_num != bundle->primary_block.src_num) {
           DEBUG("convergence_layer:Sending packet with src eid : %lu to neighbor with eid %lu.\n", bundle->primary_block.src_num, temp->endpoint_num);
           if (netif != NULL) {
             gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
