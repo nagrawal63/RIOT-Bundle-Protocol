@@ -335,6 +335,9 @@ static void _send(struct actual_bundle *bundle)
     LL_FOREACH(neighbor_list_to_send, temp) {
       struct delivered_bundle_list *ack_list, *temp_ack_list;
       ack_list = cur_router->get_delivered_bundle_list();
+      /*
+        Sending bundle for the first time from this node
+      */
       if (ack_list == NULL && temp->endpoint_scheme == IPN && temp->endpoint_num != bundle->primary_block.src_num) {
         DEBUG("convergence_layer: Sending bundle to neighbor since ack list is null.\n");
         DEBUG("convergence_layer:Sending packet to neighbor with eid %lu.\n", temp->endpoint_num);
@@ -351,10 +354,10 @@ static void _send(struct actual_bundle *bundle)
       else {
         bool found = false;
         LL_FOREACH(ack_list, temp_ack_list) {
-          DEBUG("convergence_layer: Comparing current bundle (%lu,%lu) with temp_ack_list bundle (%lu, %lu)"
-                , bundle->primary_block.creation_timestamp[0]
-                , bundle->primary_block.creation_timestamp[1], temp_ack_list->bundle->primary_block.creation_timestamp[0]
-                , temp_ack_list->bundle->primary_block.creation_timestamp[1]);
+          // DEBUG("convergence_layer: Comparing current bundle (%lu,%lu) with temp_ack_list bundle (%lu, %lu)"
+          //       , bundle->primary_block.creation_timestamp[0]
+          //       , bundle->primary_block.creation_timestamp[1], temp_ack_list->bundle->primary_block.creation_timestamp[0]
+          //       , temp_ack_list->bundle->primary_block.creation_timestamp[1]);
           if ((is_same_bundle(bundle, temp_ack_list->bundle) && is_same_neighbor(temp, temp_ack_list->neighbor))) {
             DEBUG("convergence_layer: Already delivered bundle with creation time %lu to %lu, breaking out of loop of ack_list.\n", bundle->local_creation_time, temp->endpoint_num);
             found = true;
@@ -462,13 +465,28 @@ static void print_potential_neighbor_list(struct neighbor_t* neighbors) {
   DEBUG(".\n");
 }
 
+//TODO : Add check if the bundle has already been sent to this neighbor
 void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
     struct bundle_list *bundle_store_list, *temp_bundle;
+    struct delivered_bundle_list *ack_list, *temp_ack_list;
+    uint8_t active_bundles = get_current_active_bundles(), i = 0;
+
+    ack_list = get_router()->get_delivered_bundle_list();
 
     bundle_store_list = get_bundle_list();
     temp_bundle = bundle_store_list;
-    while(temp_bundle != NULL) {
+    while(temp_bundle != NULL && i < active_bundles) {
       if(temp_bundle->current_bundle.primary_block.dst_num != (uint32_t)atoi(BROADCAST_EID)) {
+
+        /*
+          Checking if the bundle was already delivered to this neighbor earlier
+        */
+        LL_FOREACH(ack_list, temp_ack_list){
+          if ((is_same_bundle(&temp_bundle->current_bundle, temp_ack_list->bundle) && is_same_neighbor(neighbor, temp_ack_list->neighbor))){
+            DEBUG("convergence_layer: Already delivered bundle with creation time %lu to %lu.\n", temp_bundle->current_bundle.local_creation_time, neighbor->endpoint_num);
+            continue;
+          } 
+        }
 
         gnrc_netif_t *netif = NULL;
         nanocbor_encoder_t enc;
@@ -529,6 +547,7 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
         }
       }
       temp_bundle = temp_bundle->next;
+      i++;
     }
     return ;
 }
