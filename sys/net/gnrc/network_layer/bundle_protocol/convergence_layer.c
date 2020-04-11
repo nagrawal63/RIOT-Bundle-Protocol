@@ -138,6 +138,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
     (void) cur_router;
     uint8_t *temp_addr;
     int src_addr_len;
+    char *creation_timestamp0, *creation_timestamp1;
+    uint32_t src_num;
 
     src_addr_len = gnrc_netif_hdr_get_srcaddr(pkt, &temp_addr);
     uint8_t src_addr[src_addr_len];
@@ -147,12 +149,12 @@ static void _receive(gnrc_pktsnip_t *pkt)
     struct neighbor_t *neighbor = get_neighbor_from_l2addr(src_addr);
 
     DEBUG("convergence_layer: ack received from neighbor with endpoint num: %lu and l2addr %s.\n", neighbor->endpoint_num, neighbor->l2addr);
-    char *creation_timestamp0, *creation_timestamp1;
     strtok(pkt->data, "_");
     creation_timestamp0 = strtok(NULL, "_");
     creation_timestamp1 = strtok(NULL, "_");
+    src_num = strtoul(strtok(NULL, "_"), NULL, 10);
     
-    cur_router->received_ack(neighbor, atoi(creation_timestamp0), atoi(creation_timestamp1));
+    cur_router->received_ack(neighbor, atoi(creation_timestamp0), atoi(creation_timestamp1), src_num);
     
   }
   else {
@@ -279,7 +281,6 @@ static void _receive(gnrc_pktsnip_t *pkt)
 static void _send(struct actual_bundle *bundle)
 {
   DEBUG("convergence_layer: _send function.\n");
-    (void) bundle;
     set_retention_constraint(bundle, DISPATCH_PENDING_RETENTION_CONSTRAINT);
     struct router *cur_router = get_router();
     struct neighbor_t *temp;
@@ -350,6 +351,10 @@ static void _send(struct actual_bundle *bundle)
       else {
         bool found = false;
         LL_FOREACH(ack_list, temp_ack_list) {
+          DEBUG("convergence_layer: Comparing current bundle (%lu,%lu) with temp_ack_list bundle (%lu, %lu)"
+                , bundle->primary_block.creation_timestamp[0]
+                , bundle->primary_block.creation_timestamp[1], temp_ack_list->bundle->primary_block.creation_timestamp[0]
+                , temp_ack_list->bundle->primary_block.creation_timestamp[1]);
           if ((is_same_bundle(bundle, temp_ack_list->bundle) && is_same_neighbor(temp, temp_ack_list->neighbor))) {
             DEBUG("convergence_layer: Already delivered bundle with creation time %lu to %lu, breaking out of loop of ack_list.\n", bundle->local_creation_time, temp->endpoint_num);
             found = true;
@@ -540,7 +545,7 @@ void send_non_bundle_ack(struct actual_bundle *bundle, gnrc_pktsnip_t *pkt) {
 
   netif = gnrc_netif_get_by_pid(iface);
 
-  sprintf(data, "ack_%lu_%lu", bundle->primary_block.creation_timestamp[0], bundle->primary_block.creation_timestamp[1]);
+  sprintf(data, "ack_%lu_%lu_%lu", bundle->primary_block.creation_timestamp[0], bundle->primary_block.creation_timestamp[1], bundle->primary_block.src_num);
 
   ack_payload = gnrc_pktbuf_add(NULL, data, strlen(data), GNRC_NETTYPE_UNDEF);
 

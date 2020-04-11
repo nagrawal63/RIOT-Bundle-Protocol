@@ -51,12 +51,10 @@ void notify_bundle_deletion(struct actual_bundle *bundle) {
 	return ;
 }
 
-void received_ack(struct neighbor_t *src_neighbor, uint32_t creation_timestamp0, uint32_t creation_timestamp1) {
-	(void) src_neighbor;
-	(void) creation_timestamp0;
-	(void) creation_timestamp1;
+void received_ack(struct neighbor_t *src_neighbor, uint32_t creation_timestamp0, uint32_t creation_timestamp1, uint32_t src_num) {
+	
 	DEBUG("routing_epidemic: Inside processing received acknowledgement.\n");
-	struct actual_bundle *bundle = get_bundle_from_list(creation_timestamp0, creation_timestamp1);
+	struct actual_bundle *bundle = get_bundle_from_list(creation_timestamp0, creation_timestamp1, src_num);
 	if (bundle == NULL) {
 		DEBUG("bp: could not find bundle in storage corresponding to which ack received.\n");
 		return ;

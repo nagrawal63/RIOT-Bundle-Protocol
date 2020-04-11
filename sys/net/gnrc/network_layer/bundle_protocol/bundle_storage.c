@@ -93,6 +93,7 @@ bool delete_bundle(struct actual_bundle* bundle)
   if(head_of_store == NULL){
     head_of_store = free_list;
   }
+  get_router()->notify_bundle_deletion(bundle);
   active_bundles--;
   DEBUG("bundle_storage: Printing bundle storage after deleting.\n");
   // memset(&to_delete_node->unique_id, 0, sizeof(uint32_t));
@@ -135,13 +136,14 @@ struct bundle_list* find_bundle_in_list ( struct actual_bundle* bundle)
     return temp;
 }
 
-struct actual_bundle *get_bundle_from_list(uint32_t creation_timestamp0, uint32_t creation_timestamp1) 
+struct actual_bundle *get_bundle_from_list(uint32_t creation_timestamp0, uint32_t creation_timestamp1, uint32_t src_num) 
 {
   struct bundle_list *temp = NULL;
   bool found = false;
   LL_FOREACH(head_of_store, temp) {
     if (temp->current_bundle.primary_block.creation_timestamp[0] == creation_timestamp0 
-        && temp->current_bundle.primary_block.creation_timestamp[1] == creation_timestamp1) {
+        && temp->current_bundle.primary_block.creation_timestamp[1] == creation_timestamp1
+        && temp->current_bundle.primary_block.src_num == src_num) {
       found = true;
       break;
     }

@@ -26,7 +26,7 @@ bool delete_bundle(struct actual_bundle* bundle);
 uint8_t get_next_block_number(void);
 struct bundle_list* get_previous_bundle_in_list(struct actual_bundle* bundle);
 struct bundle_list* find_bundle_in_list(struct actual_bundle* bundle);
-struct actual_bundle *get_bundle_from_list(uint32_t creation_timestamp0, uint32_t creation_timestamp1);
+struct actual_bundle *get_bundle_from_list(uint32_t creation_timestamp0, uint32_t creation_timestamp1, uint32_t src_num);
 void print_bundle_storage(void);
 struct bundle_list *get_bundle_list(void);
 struct bundle_list *find_oldest_bundle_to_purge(void);
