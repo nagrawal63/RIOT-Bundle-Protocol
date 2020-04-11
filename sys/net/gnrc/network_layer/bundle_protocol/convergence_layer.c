@@ -434,8 +434,8 @@ static void retransmit_timer_callback(void *args) {
   uint8_t active_bundles = get_current_active_bundles(), i = 0;
   temp = bundle_storage_list;
   while (temp != NULL && i < active_bundles && get_retention_constraint(&temp->current_bundle) == NO_RETENTION_CONSTRAINT 
-          && temp->current_bundle.primary_block.dst_num != strtoul(get_src_num(), NULL, 10) && 
-          temp->current_bundle.primary_block.service_num != CONTACT_MANAGER_SERVICE_NUM) {
+          && temp->current_bundle.primary_block.dst_num != strtoul(get_src_num(), NULL, 10) 
+          && temp->current_bundle.primary_block.service_num != strtoul(CONTACT_MANAGER_SERVICE_NUM, NULL, 10) ) {
 
     if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, &temp->current_bundle, GNRC_NETAPI_MSG_TYPE_SND)) {
       printf("convergence_layer: Unable to find BP thread.\n");
