@@ -224,7 +224,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
         if(process_bundle_before_forwarding(bundle) < 0) {
           return ;
         }
-
+        DEBUG("convergence_layer: Encoding bundle to be forwarded with service_num: %lu.\n", bundle->primary_block.service_num);
         nanocbor_encoder_init(&enc, NULL, 0);
         bundle_encode(bundle, &enc);
         size_t required_size = nanocbor_encoded_len(&enc);
@@ -310,7 +310,7 @@ static void _send(struct actual_bundle *bundle)
         return;
       }
     }
-
+    DEBUG("convergence_layer: Encoding bundle with service_num: %lu.\n", bundle->primary_block.service_num);
     nanocbor_encoder_init(&enc, NULL, 0);
     bundle_encode(bundle, &enc);
     size_t required_size = nanocbor_encoded_len(&enc);
@@ -433,7 +433,9 @@ static void retransmit_timer_callback(void *args) {
   struct bundle_list *bundle_storage_list = get_bundle_list(), *temp;
   uint8_t active_bundles = get_current_active_bundles(), i = 0;
   temp = bundle_storage_list;
-  while (temp != NULL && i < active_bundles && get_retention_constraint(&temp->current_bundle) == NO_RETENTION_CONSTRAINT && temp->current_bundle.primary_block.dst_num != strtoul(get_src_num(), NULL, 10)) {
+  while (temp != NULL && i < active_bundles && get_retention_constraint(&temp->current_bundle) == NO_RETENTION_CONSTRAINT 
+          && temp->current_bundle.primary_block.dst_num != strtoul(get_src_num(), NULL, 10) && 
+          temp->current_bundle.primary_block.service_num != CONTACT_MANAGER_SERVICE_NUM) {
 
     if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, &temp->current_bundle, GNRC_NETAPI_MSG_TYPE_SND)) {
       printf("convergence_layer: Unable to find BP thread.\n");

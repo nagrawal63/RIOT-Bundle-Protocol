@@ -13,7 +13,7 @@
 #include "xtimer.h"
 
 #define DUMMY_EID "test"
-#define DUMMY_SRC_NUM "02"
+#define DUMMY_SRC_NUM "01"
 #define BROADCAST_EID "11111111"
 
 #define CONTACT_MANAGER_SERVICE_NUM "12"
