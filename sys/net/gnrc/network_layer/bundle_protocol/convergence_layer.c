@@ -282,19 +282,32 @@ static void _send(struct actual_bundle *bundle)
     set_retention_constraint(bundle, DISPATCH_PENDING_RETENTION_CONSTRAINT);
     struct router *cur_router = get_router();
     struct neighbor_t *temp;
+    struct bundle_canonical_block_t *bundle_age_block;
+    struct neighbor_t *neighbor_list_to_send;
+    uint32_t original_bundle_age = 0;
 
     gnrc_netif_t *netif = NULL;
     nanocbor_encoder_t enc;
 
     netif = gnrc_netif_get_by_pid(iface);
 
-    struct neighbor_t *neighbor_list_to_send = cur_router->route_receivers(bundle->primary_block.dst_num);
+    neighbor_list_to_send = cur_router->route_receivers(bundle->primary_block.dst_num);
     DEBUG("convergence_layer: Printing potential neighbor list: \n");
     print_potential_neighbor_list(neighbor_list_to_send);
     if (neighbor_list_to_send == NULL) {
       DEBUG("convergence_layer: Could not find neighbors to send bundle to.\n");
       // delete_bundle(bundle);
       return ;
+    }
+
+    bundle_age_block = get_block_by_type(bundle, BUNDLE_BLOCK_TYPE_BUNDLE_AGE);
+    if(bundle_age_block != NULL) {
+      original_bundle_age = atoi((char*)bundle_age_block->block_data);
+      if(increment_bundle_age(bundle_age_block, bundle) < 0) {
+        DEBUG("convergence_layer: Bundle expired.\n");
+        delete_bundle(bundle);
+        return;
+      }
     }
 
     nanocbor_encoder_init(&enc, NULL, 0);
@@ -337,7 +350,7 @@ static void _send(struct actual_bundle *bundle)
         bool found = false;
         LL_FOREACH(ack_list, temp_ack_list) {
           if ((is_same_bundle(bundle, temp_ack_list->bundle) && is_same_neighbor(temp, temp_ack_list->neighbor))) {
-            DEBUG("convergence_layer: Already delivered bundle with creation time %lu to %s, breaking out of loop of ack_list", bundle->local_creation_time, temp->l2addr);
+            DEBUG("convergence_layer: Already delivered bundle with creation time %lu to %s, breaking out of loop of ack_list.\n", bundle->local_creation_time, temp->l2addr);
             found = true;
             break;
           }
@@ -354,6 +367,9 @@ static void _send(struct actual_bundle *bundle)
           }
         }
       }
+    }
+    if (reset_bundle_age(bundle_age_block, original_bundle_age) < 0) {
+      DEBUG("convergence_layer: Error resetting bundle age to original.\n");
     }
     set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
     // delete_bundle(bundle);
@@ -417,6 +433,7 @@ static void retransmit_timer_callback(void *args) {
   uint8_t active_bundles = get_current_active_bundles(), i = 0;
   temp = bundle_storage_list;
   while (temp != NULL && i < active_bundles && get_retention_constraint(&temp->current_bundle) == NO_RETENTION_CONSTRAINT && temp->current_bundle.primary_block.dst_num != strtoul(get_src_num(), NULL, 10)) {
+
     if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, &temp->current_bundle, GNRC_NETAPI_MSG_TYPE_SND)) {
       printf("convergence_layer: Unable to find BP thread.\n");
       return ;
@@ -493,9 +510,10 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
           DEBUG("convergence_layer: Sending stored packet to process with pid %d.\n", netif->pid);
           gnrc_netapi_send(netif->pid, pkt);
         }
-        /*Will reset bundle age to original so that the bundle is identifiable 
-          with the orignal information for cross checking with data in the 
-          acknowledgement packet*/
+        /*Will reset bundle age to original so that the bundle's age can be correctly identified
+          when updating the bundle age the next time when sending to someone else.
+          Also, cannot do this by simply updating the local creation time since that is used for 
+          bundle purging to identify the oldest bundle*/
         if (original_bundle_age != 0) {
           if (reset_bundle_age(bundle_age_block, original_bundle_age) < 0) {
             DEBUG("convergence_layer: Error resetting bundle age to original.\n");

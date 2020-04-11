@@ -94,7 +94,7 @@ static void _receive(struct actual_bundle *bundle)
   struct neighbor_t *temp;
   LL_SEARCH(head_of_neighbors, temp, neighbor, comparator);
   if(!temp) {
-    DEBUG("contact_manager: Adding neighbor.\n");
+    DEBUG("contact_manager: Adding neighbor which will expire in %d.\n", NEIGHBOR_PURGE_TIMER_SECONDS);
     LL_APPEND(head_of_neighbors, neighbor);
     
 // #ifdef ROUTING_EPIDEMIC

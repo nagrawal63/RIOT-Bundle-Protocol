@@ -1342,7 +1342,7 @@ void print_bundle(struct actual_bundle* bundle)
 
 int increment_bundle_age(struct bundle_canonical_block_t *bundle_age_block, struct actual_bundle *bundle) {
   uint32_t usecs_from_bundle = strtoul((char*)bundle_age_block->block_data, NULL, bundle_age_block->data_len);
-  uint32_t updated_time = usecs_from_bundle+(xtimer_now().ticks32-bundle->local_creation_time);
+  uint32_t updated_time = usecs_from_bundle + (xtimer_now().ticks32 - bundle->local_creation_time);
   if(updated_time > bundle->primary_block.lifetime) {
     DEBUG("bundle: lifetime of bundle expired.\n");
     set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
