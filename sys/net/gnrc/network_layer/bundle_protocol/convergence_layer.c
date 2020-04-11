@@ -278,6 +278,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
 
 static void _send(struct actual_bundle *bundle)
 {
+  DEBUG("convergence_layer: _send function.\n");
     (void) bundle;
     set_retention_constraint(bundle, DISPATCH_PENDING_RETENTION_CONSTRAINT);
     struct router *cur_router = get_router();

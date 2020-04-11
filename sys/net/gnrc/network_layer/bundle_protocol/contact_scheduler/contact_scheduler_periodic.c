@@ -89,11 +89,11 @@ int send(int data)
     delete_bundle(bundle);
     return ERROR;
   }
-  // printf("Encoded bundle: ");
-  // for(int i=0;i<(int)size;i++){
-  //   printf("%02x",buf_data[i]);
-  // }
-  // printf(" at %p\n", bundle);
+  DEBUG("contact_scheduler: Encoded discovery bundle: ");
+  for(int i=0;i<(int)size;i++){
+    printf("%02x",buf_data[i]);
+  }
+  printf(" at %p\n", bundle);
   discovery_packet = gnrc_pktbuf_add(NULL, buf_data, (int)size, GNRC_NETTYPE_CONTACT_MANAGER);
   if (discovery_packet == NULL) {
     DEBUG("contact_scheduler: unable to copy data to discovery packet buffer.\n");

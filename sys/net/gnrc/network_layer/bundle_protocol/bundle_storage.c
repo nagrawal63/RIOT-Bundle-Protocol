@@ -111,7 +111,7 @@ struct bundle_list* get_previous_bundle_in_list(struct actual_bundle* bundle)
     // print_bundle_storage();
     struct bundle_list* temp = head_of_store;
     if(is_same_bundle(&(temp->current_bundle), bundle)){
-      DEBUG("bundle_storage: To delete first bundle.\n");
+      // DEBUG("bundle_storage: To delete first bundle.\n");
       return NULL;
     }
     while(temp->next != NULL){
