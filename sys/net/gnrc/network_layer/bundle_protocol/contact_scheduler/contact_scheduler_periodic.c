@@ -103,7 +103,7 @@ int send(int data)
 
   if (netif != NULL) {
       gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
-      DEBUG("contact_scheduler: netif hdr data is %s.\n",(char *)netif_hdr->data);
+      // DEBUG("contact_scheduler: netif hdr data is %s.\n",(char *)netif_hdr->data);
       gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
       LL_PREPEND(discovery_packet, netif_hdr);
   }

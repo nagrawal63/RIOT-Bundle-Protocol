@@ -6,6 +6,7 @@
 
 #include "kernel_types.h"
 
+#include "net/gnrc/pkt.h"
 #include "net/gnrc/bundle_protocol/config.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/contact_manager.h"
@@ -36,7 +37,7 @@ void deliver_bundle(void *ptr, struct registration_status *application);
 bool check_lifetime_expiry(struct actual_bundle *bundle);
 
 void send_bundles_to_new_neighbor (struct neighbor_t *neighbor);
-void send_non_bundle_ack(struct actual_bundle *bundle);
+void send_non_bundle_ack(struct actual_bundle *bundle, gnrc_pktsnip_t *pkt);
 void send_ack(struct actual_bundle *bundle);
 
 int deliver_bundles_to_application(struct registration_status *application);

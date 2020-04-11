@@ -255,7 +255,7 @@ void create_neighbor_expiry_timer(struct neighbor_t *neighbor) {
 }
 
 static void timer_expiry_callback (void *args) {
-  printf("contact_manager: Deleting expired neighbor with eid %lu.\n", ((struct neighbor_t*)args)->endpoint_num);
+  printf("contact_manager: Deleting expired neighbor with eid %lu!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", ((struct neighbor_t*)args)->endpoint_num);
   LL_DELETE(head_of_neighbors, ((struct neighbor_t*)args));
 }
 

@@ -182,7 +182,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
       DEBUG("convergence_layer: ***********Data in bundle.****************\n");
       od_hex_dump(bundle_get_payload_block(bundle)->block_data, bundle_get_payload_block(bundle)->data_len, OD_WIDTH_DEFAULT);
       /*Sending acknowledgement for received bundle*/
-      send_non_bundle_ack(bundle);
+      send_non_bundle_ack(bundle, pkt);
       /* This bundle is for the current node, send to application that sent it*/
       if (bundle->primary_block.dst_num == (uint32_t)atoi(get_src_num())) {
         set_retention_constraint(bundle, SEND_ACK_PENDING_RETENTION_CONSTRAINT);
@@ -528,13 +528,15 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
     return ;
 }
 
-void send_non_bundle_ack(struct actual_bundle *bundle) {
-  DEBUG("convergence_layer: Sending acknowledgement.\n");
+void send_non_bundle_ack(struct actual_bundle *bundle, gnrc_pktsnip_t *pkt) {
+  DEBUG("convergence_layer: Sending non bundle acknowledgement.\n");
   gnrc_netif_t *netif = NULL;
   gnrc_pktsnip_t *ack_payload;
+  uint8_t *temp_addr;
+  uint8_t src_addr_len;
   
   char data[MAX_ACK_SIZE];
-  struct neighbor_t *neighbor_src = NULL;
+  // struct neighbor_t *neighbor_src = NULL;
 
   netif = gnrc_netif_get_by_pid(iface);
 
@@ -542,16 +544,17 @@ void send_non_bundle_ack(struct actual_bundle *bundle) {
 
   ack_payload = gnrc_pktbuf_add(NULL, data, strlen(data), GNRC_NETTYPE_UNDEF);
 
-  neighbor_src = get_neighbor_from_endpoint_num(bundle->primary_block.src_num);
+  //TODO: Change the src_num to the node from which the packet has just been received
+  src_addr_len = gnrc_netif_hdr_get_srcaddr(pkt, &temp_addr);
+  // uint8_t src_addr[src_addr_len];
+  // strncpy((char*)src_addr, (char*)temp_addr, src_addr_len);
+  // neighbor_src = get_neighbor_from_endpoint_num(bundle->primary_block.src_num);
 
-  if (netif != NULL && neighbor_src != NULL) {
-      gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, neighbor_src->l2addr, neighbor_src->l2addr_len);
+  if (netif != NULL) {
+      gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp_addr, src_addr_len);
 
       gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
       LL_PREPEND(ack_payload, netif_hdr);
-  }
-  else if (neighbor_src == NULL) {
-    DEBUG("convergence_layer: Couldn't find neighbor in list while sending acknowledgement.\n");
   }
   if (netif->pid != 0) {
     gnrc_netapi_send(netif->pid, ack_payload);
