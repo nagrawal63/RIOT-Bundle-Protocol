@@ -15,6 +15,7 @@
 #define DUMMY_EID "test"
 #define DUMMY_SRC_NUM "02"
 #define BROADCAST_EID "11111111"
+#define INVALID_EID  0xFFFFFFFF 
 
 #define CONTACT_MANAGER_SERVICE_NUM "12"
 
@@ -134,6 +135,7 @@ struct actual_bundle{
   uint32_t local_creation_time;
   uint8_t retention_constraint;
   int iface; 
+  uint32_t previous_endpoint_num;
 };
 
 bool is_same_bundle(struct actual_bundle* current_bundle, struct actual_bundle* compare_to_bundle);

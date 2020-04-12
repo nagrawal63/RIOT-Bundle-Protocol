@@ -91,8 +91,13 @@ bool check_lifetime_expiry(struct actual_bundle *bundle) {
       delete_bundle(bundle);
       return true;
     }
+    else {
+      return false;
+    }
   }
-  return false;
+  else {
+    return true;
+  }
 }
 
 int process_bundle_before_forwarding(struct actual_bundle *bundle) {
@@ -135,7 +140,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
 
   if (is_packet_ack(pkt)) {
     DEBUG("convergence_layer: ack received.\n");
-    (void) cur_router;
+    // (void) cur_router;
     uint8_t *temp_addr;
     int src_addr_len;
     char *creation_timestamp0, *creation_timestamp1;
@@ -147,6 +152,11 @@ static void _receive(gnrc_pktsnip_t *pkt)
     // DEBUG("convergence_layer: src addr from netif hdr %s.\n", src_addr);
 
     struct neighbor_t *neighbor = get_neighbor_from_l2addr(src_addr);
+
+    if (neighbor == NULL) {
+      DEBUG("convergence_layer: Could not find neighbor from whom data is received.\n");
+      return ;
+    }
 
     DEBUG("convergence_layer: ack received from neighbor with endpoint num: %lu and l2addr %s.\n", neighbor->endpoint_num, neighbor->l2addr);
     strtok(pkt->data, "_");
@@ -183,6 +193,21 @@ static void _receive(gnrc_pktsnip_t *pkt)
       DEBUG("convergence_layer: Not a discovery packet with destination: %lu, source: %lu and current address: %lu !!!!!!!!!!!!!!!!!!\n", bundle->primary_block.dst_num, bundle->primary_block.src_num, (uint32_t)atoi(get_src_num()));
       DEBUG("convergence_layer: ***********Data in bundle.****************\n");
       od_hex_dump(bundle_get_payload_block(bundle)->block_data, bundle_get_payload_block(bundle)->data_len, OD_WIDTH_DEFAULT);
+
+      uint8_t *temp_addr;
+      int src_addr_len;
+      src_addr_len = gnrc_netif_hdr_get_srcaddr(pkt, &temp_addr);
+      uint8_t src_addr[src_addr_len];
+      strncpy((char*)src_addr, (char*)temp_addr, src_addr_len);
+      // DEBUG("convergence_layer: src addr from netif hdr %s.\n", src_addr);
+
+      struct neighbor_t *previous_neighbor = get_neighbor_from_l2addr(src_addr);
+      
+      /*
+        Storing this information so that it can be used as previuos node information while retransmitting
+      */
+      bundle->previous_endpoint_num = previous_neighbor->endpoint_num;
+
       /*Sending acknowledgement for received bundle*/
       send_non_bundle_ack(bundle, pkt);
       /* This bundle is for the current node, send to application that sent it*/
@@ -248,11 +273,11 @@ static void _receive(gnrc_pktsnip_t *pkt)
         }
 
         /*
-          Handling not sending to source node since the solution would require more malloc
+          Handling not sending to previous node here since the solution would require more malloc
           and space is problem on these low power nodes
         */
         LL_FOREACH(neighbors_to_send, temp) {
-          if (temp->endpoint_scheme == IPN && temp->endpoint_num != bundle->primary_block.src_num) {
+          if (temp->endpoint_scheme == IPN && temp->endpoint_num != previous_neighbor->endpoint_num && memcmp(temp->l2addr, previous_neighbor->l2addr, temp->l2addr_len) != 0) {
             DEBUG("convergence_layer:Forwarding packet to neighbor with eid %lu.\n", temp->endpoint_num);
             sent = true;
             if (netif != NULL) {
@@ -338,7 +363,7 @@ static void _send(struct actual_bundle *bundle)
       /*
         Sending bundle for the first time from this node
       */
-      if (ack_list == NULL && temp->endpoint_scheme == IPN && temp->endpoint_num != bundle->primary_block.src_num) {
+      if (ack_list == NULL && temp->endpoint_scheme == IPN && temp->endpoint_num != bundle->previous_endpoint_num) {
         DEBUG("convergence_layer: Sending bundle to neighbor since ack list is null.\n");
         DEBUG("convergence_layer:Sending packet to neighbor with eid %lu.\n", temp->endpoint_num);
         if (netif != NULL) {
@@ -364,7 +389,7 @@ static void _send(struct actual_bundle *bundle)
             break;
           }
         }
-        if (!found && temp->endpoint_scheme == IPN && temp->endpoint_num != bundle->primary_block.src_num) {
+        if (!found && temp->endpoint_scheme == IPN && temp->endpoint_num != bundle->previous_endpoint_num) {
           DEBUG("convergence_layer:Sending packet with src eid : %lu to neighbor with eid %lu.\n", bundle->primary_block.src_num, temp->endpoint_num);
           if (netif != NULL) {
             gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);

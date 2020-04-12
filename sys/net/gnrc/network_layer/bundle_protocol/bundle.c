@@ -925,6 +925,7 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
   bool is_fragment= check_if_fragment_bundle();
   bool dont_fragment = true;
 
+  bundle->previous_endpoint_num = INVALID_EID;
   calculate_primary_flag(&primary_flag, is_fragment, dont_fragment);
   // DEBUG("bundle: value of flag while setting is '%lld'.\n", primary_flag);
   
