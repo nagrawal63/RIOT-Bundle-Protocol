@@ -179,6 +179,15 @@ static void _receive(gnrc_pktsnip_t *pkt)
       return ;
     }
 
+    if (is_redundant_bundle(bundle)) {
+      DEBUG("convergence_layer: Received this bundle before, discarding bundle");
+      if (bundle->primary_block.service_num  != (uint32_t)atoi(CONTACT_MANAGER_SERVICE_NUM)){
+        send_non_bundle_ack(bundle, pkt);
+      }
+      delete_bundle(bundle);
+      return ;
+    }
+
 #ifdef MODULE_GNRC_CONTACT_MANAGER
     if (bundle->primary_block.service_num  == (uint32_t)atoi(CONTACT_MANAGER_SERVICE_NUM)) {
       if (!gnrc_bp_dispatch(GNRC_NETTYPE_CONTACT_MANAGER, GNRC_NETREG_DEMUX_CTX_ALL, bundle, GNRC_NETAPI_MSG_TYPE_RCV)) {
@@ -197,11 +206,11 @@ static void _receive(gnrc_pktsnip_t *pkt)
       uint8_t *temp_addr;
       int src_addr_len;
       src_addr_len = gnrc_netif_hdr_get_srcaddr(pkt, &temp_addr);
-      uint8_t src_addr[src_addr_len];
-      strncpy((char*)src_addr, (char*)temp_addr, src_addr_len);
-      // DEBUG("convergence_layer: src addr from netif hdr %s.\n", src_addr);
 
+      uint8_t src_addr[src_addr_len];
       struct neighbor_t *previous_neighbor = get_neighbor_from_l2addr(src_addr);
+
+      strncpy((char*)src_addr, (char*)temp_addr, src_addr_len);
       
       /*
         Storing this information so that it can be used as previuos node information while retransmitting
@@ -210,6 +219,9 @@ static void _receive(gnrc_pktsnip_t *pkt)
 
       /*Sending acknowledgement for received bundle*/
       send_non_bundle_ack(bundle, pkt);
+
+      gnrc_pktbuf_release(pkt);
+
       /* This bundle is for the current node, send to application that sent it*/
       if (bundle->primary_block.dst_num == (uint32_t)atoi(get_src_num())) {
         set_retention_constraint(bundle, SEND_ACK_PENDING_RETENTION_CONSTRAINT);
@@ -264,8 +276,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
         }
         printf(" at %p\n", bundle);
 
-        gnrc_pktsnip_t *pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
-        if (pkt == NULL) {
+        gnrc_pktsnip_t *forward_pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
+        if (forward_pkt == NULL) {
           DEBUG("convergence_layer: unable to copy data to packet buffer.\n");
           delete_bundle(bundle);
           free(buf);
@@ -276,6 +288,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
           Handling not sending to previous node here since the solution would require more malloc
           and space is problem on these low power nodes
         */
+        // TODO: Add checking from ack list since it is possible we receive the same bundle and it might be sent again
+        //       to other nodes
         LL_FOREACH(neighbors_to_send, temp) {
           if (temp->endpoint_scheme == IPN && temp->endpoint_num != previous_neighbor->endpoint_num && memcmp(temp->l2addr, previous_neighbor->l2addr, temp->l2addr_len) != 0) {
             DEBUG("convergence_layer:Forwarding packet to neighbor with eid %lu.\n", temp->endpoint_num);
@@ -284,11 +298,11 @@ static void _receive(gnrc_pktsnip_t *pkt)
               gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
               // DEBUG("convergence_layer: netif hdr data is %s.\n",(char *)netif_hdr->data);
               gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
-              LL_PREPEND(pkt, netif_hdr);
+              LL_PREPEND(forward_pkt, netif_hdr);
             }
             if (netif->pid != 0) {
               DEBUG("convergence_layer: Forwarding packet to process with pid %d.\n", netif->pid);
-              gnrc_netapi_send(netif->pid, pkt);
+              gnrc_netapi_send(netif->pid, forward_pkt);
             }
           }
         }
@@ -653,6 +667,7 @@ int deliver_bundles_to_application(struct registration_status *application)
   LL_FOREACH(list, temp) {
     if (list->current_bundle.primary_block.dst_num == strtoul(get_src_num(), NULL, 10) && list->current_bundle.primary_block.service_num == application->service_num) {
       deliver_bundle((void *)(bundle_get_payload_block(&list->current_bundle)->block_data), application);
+      delete_bundle(&temp->current_bundle);
     }
   }
   return OK;

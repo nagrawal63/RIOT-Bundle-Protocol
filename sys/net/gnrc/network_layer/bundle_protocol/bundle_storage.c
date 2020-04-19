@@ -168,11 +168,13 @@ void print_bundle_storage(void)
 }
 
 
-struct bundle_list *get_bundle_list(void) {
+struct bundle_list *get_bundle_list(void) 
+{
   return head_of_store;
 }
 
-struct bundle_list *find_oldest_bundle_to_purge(void) {
+struct bundle_list *find_oldest_bundle_to_purge(void) 
+{
   struct bundle_list *temp, *oldest_bundle = NULL;
   uint32_t oldest_time = UINT32_MAX;
   LL_FOREACH(head_of_store, temp) {
@@ -185,6 +187,22 @@ struct bundle_list *find_oldest_bundle_to_purge(void) {
   return oldest_bundle;
 }
 
-uint8_t get_current_active_bundles(void) {
+uint8_t get_current_active_bundles(void) 
+{
   return active_bundles;
+}
+
+bool is_redundant_bundle(struct actual_bundle *bundle) 
+{
+  struct bundle_list *temp;
+  int i = 0;
+  LL_FOREACH(head_of_store, temp) {
+    if (is_same_bundle(bundle, &temp->current_bundle)) {
+      i++;
+    }
+  }
+  if (i > 1) {
+    return true;
+  }
+  return false;
 }

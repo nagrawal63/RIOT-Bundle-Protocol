@@ -31,5 +31,6 @@ void print_bundle_storage(void);
 struct bundle_list *get_bundle_list(void);
 struct bundle_list *find_oldest_bundle_to_purge(void);
 uint8_t get_current_active_bundles(void);
+bool is_redundant_bundle(struct actual_bundle *bundle);
 
 #endif
