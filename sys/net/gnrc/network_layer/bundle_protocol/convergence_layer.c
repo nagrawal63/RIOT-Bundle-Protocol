@@ -165,6 +165,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
     src_num = strtoul(strtok(NULL, "_"), NULL, 10);
     
     cur_router->received_ack(neighbor, atoi(creation_timestamp0), atoi(creation_timestamp1), src_num);
+
+    gnrc_pktbuf_release(pkt);
     
   }
   else {
@@ -197,7 +199,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
         DEBUG("convergence_layer: no contact_manager thread found\n");
         delete_bundle(bundle);
       }
-      DEBUG("convergence_layer: Printing gnrc_pktbuf_stats before deleting discovery packet.\n");
+      DEBUG("convergence_layer: Printing gnrc_pktbuf_stats before deleting discovery packet with number of users: %d.\n", pkt->users);
       gnrc_pktbuf_stats();
       gnrc_pktbuf_release(pkt);
     }

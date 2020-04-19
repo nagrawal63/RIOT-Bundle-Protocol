@@ -915,8 +915,12 @@ struct actual_bundle* create_bundle(void)
 }
 
 
-void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dst_eid, char* report_eid, uint32_t lifetime, int crc_type, char* service_num, int iface)
+int fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dst_eid, char* report_eid, uint32_t lifetime, int crc_type, char* service_num, int iface)
 {
+  if (strcmp(dst_eid, get_src_num()) == 0) {
+    DEBUG("bundle: Source and destination address cannot be same.\n");
+    return ERROR;
+  }
   int zero_val = 0;
   uint32_t creation_timestamp_arr[2] = {0, sequence_num++};
 
@@ -932,66 +936,66 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
   // Setting the primary block fields first
   if(!bundle_set_attribute(bundle, VERSION, &version)){
     DEBUG("bundle: Could not set version in bundle.\n");
-    return ;
+    return ERROR;
   }
 
   if(!bundle_set_attribute(bundle, FLAGS_PRIMARY, &primary_flag)){
     DEBUG("bundle: Could not set bundle primary flag.\n");
-    return ;
+    return ERROR;
   }
 
   if(!bundle_set_attribute(bundle, ENDPOINT_SCHEME, &endpoint_scheme)){
     DEBUG("bundle: Could not set bundle endpoint scheme.\n");
-    return ;
+    return ERROR;
   }
 
   if(!bundle_set_attribute(bundle, CRC_TYPE_PRIMARY, &crc_type)){
     DEBUG("bundle: Could not set bundle crc_type.\n");
-    return ;
+    return ERROR;
   }
   
   if (bundle->primary_block.endpoint_scheme == DTN) {
     if(!bundle_set_attribute(bundle, SRC_EID, get_src_eid())){
       DEBUG("bundle: Could not set bundle src eid.\n");
-      return ;
+      return ERROR;
     }
 
     if(!bundle_set_attribute(bundle, DST_EID, dst_eid)){
       DEBUG("bundle: Could not set bundle dst eid.\n");
-      return ;
+      return ERROR;
     }
 
     if(!bundle_set_attribute(bundle, REPORT_EID, report_eid)){
       DEBUG("bundle: Could not set bundle report eid.\n");
-      return ;
+      return ERROR;
     }
   }
   else if (bundle->primary_block.endpoint_scheme == IPN) {
     if(!bundle_set_attribute(bundle, SRC_NUM, get_src_num())){
       DEBUG("bundle: Could not set bundle src num.\n");
-      return ;
+      return ERROR;
     }
 
     if(!bundle_set_attribute(bundle, DST_NUM, dst_eid)){
       DEBUG("bundle: Could not set bundle dst num.\n");
-      return ;
+      return ERROR;
     }
 
     if(!bundle_set_attribute(bundle, REPORT_NUM, report_eid)){
       DEBUG("bundle: Could not set bundle report num.\n");
-      return ;
+      return ERROR;
     }
     assert(service_num != NULL);
     if(!bundle_set_attribute(bundle, SERVICE_NUM, service_num)) {
       DEBUG("bundle: Could not set bundle service num.\n");
-      return ;
+      return ERROR;
     }
   }
 
   if(!check_if_node_has_clock()){
     if(!bundle_set_attribute(bundle, CREATION_TIMESTAMP, creation_timestamp_arr)){
       DEBUG("bundle: Could not set bundle creation time.\n");
-      return ;
+      return ERROR;
     }
   }else{
     // TODO: Implement creation_timestamp thing if the node actually has clock
@@ -1000,17 +1004,17 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
 
   if(!bundle_set_attribute(bundle, LIFETIME, &lifetime)){
     DEBUG("bundle: Could not set bundle lifetime.\n");
-    return ;
+    return ERROR;
   }
 
   if(!is_fragment){
     if(!bundle_set_attribute(bundle, FRAGMENT_OFFSET, &zero_val)){
       DEBUG("bundle: Could not set bundle lifetime.\n");
-      return ;
+      return ERROR;
     }
     if(!bundle_set_attribute(bundle, TOTAL_APPLICATION_DATA_LENGTH, &zero_val)){
       DEBUG("bundle: Could not set bundle lifetime.\n");
-      return ;
+      return ERROR;
     }
   }
   
@@ -1024,7 +1028,7 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
       {
         if(!bundle_set_attribute(bundle, CRC_PRIMARY, &zero_crc)){
           DEBUG("bundle: Could not set bundle crc.\n");
-          return ;
+          return ERROR;
         }
         break;
       }
@@ -1032,12 +1036,12 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
     {
       if(!bundle_set_attribute(bundle, CRC_PRIMARY, &zero_crc)){
         DEBUG("bundle: Could not set bundle crc.\n");
-        return ;
+        return ERROR;
       }
       uint16_t crc = calculate_crc_16(BUNDLE_BLOCK_TYPE_PRIMARY, bundle);
       if(!bundle_set_attribute(bundle, CRC_PRIMARY, &crc)){
         DEBUG("bundle: Could not set bundle crc.\n");
-        return ;
+        return ERROR;
       }
       break;
     }
@@ -1046,12 +1050,13 @@ void fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sch
       uint32_t crc = calculate_crc_32(BUNDLE_BLOCK_TYPE_PRIMARY, bundle);
       if(!bundle_set_attribute(bundle, CRC_PRIMARY, &crc)){
         DEBUG("bundle: Could not set bundle crc.\n");
-        return ;
+        return ERROR;
       }
       break;
     }
   }
   bundle->iface = iface;
+  return OK;
 }
 
 struct bundle_primary_block_t* bundle_get_primary_block(struct actual_bundle* bundle)

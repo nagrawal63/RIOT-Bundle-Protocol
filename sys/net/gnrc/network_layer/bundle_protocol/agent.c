@@ -31,13 +31,19 @@ void send_bundle(uint8_t *payload_data, size_t data_len, char *dst, char *servic
 	return;
 	}
 
+
 	struct actual_bundle *bundle;
 	if((bundle = create_bundle()) == NULL){
 	printf("Could not create bundle.\n");
 	return;
 	}
 
-	fill_bundle(bundle, 7, IPN, dst, report_num, lifetime, crctype, service_num, iface);
+	int res = fill_bundle(bundle, 7, IPN, dst, report_num, lifetime, crctype, service_num, iface);
+	if (res < 0) {
+		printf("Invalid bundle.\n");
+		delete_bundle(bundle);
+		return ;
+	}
 	bundle_add_block(bundle, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, crctype, data_len);
 
 	/* Creating bundle age block*/
