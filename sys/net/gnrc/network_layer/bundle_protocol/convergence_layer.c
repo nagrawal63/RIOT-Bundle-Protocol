@@ -96,7 +96,7 @@ bool check_lifetime_expiry(struct actual_bundle *bundle) {
     }
   }
   else {
-    return true;
+    return false;
   }
 }
 
@@ -171,11 +171,13 @@ static void _receive(gnrc_pktsnip_t *pkt)
     struct actual_bundle *bundle = create_bundle();
     if (bundle_decode(bundle, pkt->data, pkt->size) == ERROR) {
       DEBUG("convergence_layer: Packet received not for bundle protocol.\n");
+      gnrc_pktbuf_release(pkt);
       delete_bundle(bundle);
       return ;
     }
     if (check_lifetime_expiry(bundle)) {
       DEBUG("convergence_layer: received bundle's lifetime expired and has been deleted from storage.\n");
+      gnrc_pktbuf_release(pkt);
       return ;
     }
 
@@ -184,6 +186,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
       if (bundle->primary_block.service_num  != (uint32_t)atoi(CONTACT_MANAGER_SERVICE_NUM)){
         send_non_bundle_ack(bundle, pkt);
       }
+      gnrc_pktbuf_release(pkt);
       delete_bundle(bundle);
       return ;
     }
@@ -194,6 +197,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
         DEBUG("convergence_layer: no contact_manager thread found\n");
         delete_bundle(bundle);
       }
+      DEBUG("convergence_layer: Printing gnrc_pktbuf_stats before deleting discovery packet.\n");
+      gnrc_pktbuf_stats();
       gnrc_pktbuf_release(pkt);
     }
 #endif
