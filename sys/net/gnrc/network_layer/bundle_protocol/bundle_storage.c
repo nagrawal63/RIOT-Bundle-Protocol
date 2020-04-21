@@ -20,10 +20,6 @@ static void delete_oldest(void);
 struct bundle_list* bundle_storage_init(void)
 {
   free_list = malloc(MAX_BUNDLES * sizeof(struct bundle_list));
-  // bundle_store->next = NULL;
-  free_list->num_of_bundles=0;
-  // free_list->next_block_number = 0;
-  // bundle_store->next_empty_index = 1;
   for(int i=0;i<MAX_BUNDLES-1;i++){
     free_list[i].next = &free_list[i+1];
     free_list[i].unique_id = 0;
@@ -37,13 +33,12 @@ struct bundle_list* bundle_storage_init(void)
 
   return free_list;
 }
-//TODO: Test this implementation
+
 struct actual_bundle* get_space_for_bundle(void)
 {
   struct bundle_list *ret = NULL;
   if(free_list == NULL){
     DEBUG("bundle_storage: Bundle storage is full, deleting oldest bundle.\n");
-    // print_bundle_storage();
     struct bundle_list *oldest_bundle = find_oldest_bundle_to_purge();
     if(delete_bundle(&oldest_bundle->current_bundle)) {
       DEBUG("bundle_storage: deleted oldest bundle .\n");
@@ -101,7 +96,6 @@ bool delete_bundle(struct actual_bundle* bundle)
   get_router()->notify_bundle_deletion(bundle);
   active_bundles--;
   DEBUG("bundle_storage: Printing bundle storage after deleting.\n");
-  // memset(&to_delete_node->unique_id, 0, sizeof(uint32_t));
   print_bundle_storage();
   return true;
 }
@@ -113,11 +107,8 @@ uint8_t get_next_block_number(void)
 
 struct bundle_list* get_previous_bundle_in_list(struct actual_bundle* bundle)
 {
-    // DEBUG("bundle_storage: Inside get previous bundle.\n");
-    // print_bundle_storage();
     struct bundle_list* temp = head_of_store;
     if(is_same_bundle(&(temp->current_bundle), bundle)){
-      // DEBUG("bundle_storage: To delete first bundle.\n");
       return NULL;
     }
     while(temp->next != NULL){

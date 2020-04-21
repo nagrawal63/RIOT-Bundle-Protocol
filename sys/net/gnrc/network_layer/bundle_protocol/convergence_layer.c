@@ -48,7 +48,7 @@ kernel_pid_t gnrc_bp_init(void)
                         THREAD_CREATE_STACKTEST, _event_loop, NULL, "convergence_layer");
 
   DEBUG("convergence_layer: thread created with pid: %d\n",_pid);
-  // bundle_protocol_init();
+  bundle_protocol_init();
   return _pid;
 }
 
@@ -203,7 +203,6 @@ static void _receive(gnrc_pktsnip_t *pkt)
         delete_bundle(bundle);
       }
       DEBUG("convergence_layer: Printing gnrc_pktbuf_stats before deleting discovery packet with number of users: %d.\n", pkt->users);
-      gnrc_pktbuf_stats();
       gnrc_pktbuf_release(pkt);
     }
 #endif

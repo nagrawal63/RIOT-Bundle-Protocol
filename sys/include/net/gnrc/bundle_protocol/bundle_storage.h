@@ -11,8 +11,8 @@
 //Implemented bundle storage as a linkedlist of bundles
 struct bundle_list{
   struct actual_bundle current_bundle;
+  // uint8_t num_of_bundles;
   struct bundle_list* next;
-  uint8_t num_of_bundles;
   uint32_t unique_id;
 };
 
