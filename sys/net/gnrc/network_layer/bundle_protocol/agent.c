@@ -1,6 +1,6 @@
 #include "utlist.h"
 
-#include "net/gnrc.h"
+// #include "net/gnrc.h"
 #include "net/gnrc/netif.h"
 #include "net/gnrc/bundle_protocol/agent.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
@@ -15,8 +15,23 @@ static struct registration_status *application_list = NULL;
 
 static int calculate_size_of_num(uint32_t num);
 
-void bundle_protocol_init(void) {
+void bundle_protocol_init(kernel_pid_t pid) {
 	bundle_storage_init();
+	gnrc_netif_t *netif = NULL;
+
+	netif = gnrc_netif_get_by_pid(pid);
+	DEBUG("agent: numof interfaces :%d.\n",gnrc_netif_numof());
+	if (netif == NULL) {
+		DEBUG("agent: Provided network interface is NULL, using hardcoded interface 9.\n");
+		iface = 9;
+	}
+	else if (gnrc_netif_numof() == 1) {
+		iface = netif->pid;
+	}
+	else {
+		/*Implement handling with multiple network interfaces*/
+		iface = netif->pid;
+	}
 }
 
 void send_bundle(uint8_t *payload_data, size_t data_len, char *dst, char *service_num, int iface, char *report_num, uint8_t crctype, uint32_t lifetime) 

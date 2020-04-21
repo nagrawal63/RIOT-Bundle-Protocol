@@ -21,7 +21,7 @@
 static kernel_pid_t _pid = KERNEL_PID_UNDEF;
 
 //Hardcoded right now, find a way to change this soon
-int iface = 9;
+int iface = 0;
 
 
 #if ENABLE_DEBUG
@@ -48,7 +48,7 @@ kernel_pid_t gnrc_bp_init(void)
                         THREAD_CREATE_STACKTEST, _event_loop, NULL, "convergence_layer");
 
   DEBUG("convergence_layer: thread created with pid: %d\n",_pid);
-  bundle_protocol_init();
+  // bundle_protocol_init(NULL);
   return _pid;
 }
 
@@ -328,7 +328,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
 
 static void _send(struct actual_bundle *bundle)
 {
-  DEBUG("convergence_layer: _send function.\n");
+  DEBUG("convergence_layer: _send function with iface = %d.\n", iface);
     set_retention_constraint(bundle, DISPATCH_PENDING_RETENTION_CONSTRAINT);
     struct router *cur_router = get_router();
     struct neighbor_t *temp;
@@ -454,8 +454,8 @@ static void *_event_loop(void *args)
   timer->arg = timer;
   xtimer_set(timer, xtimer_ticks_from_usec(RETRANSMIT_TIMER_SECONDS).ticks32);
 
-  uint8_t num_of_iface = gnrc_netif_numof();
-  DEBUG("convergence_layer: num of ifaces: %u.\n", num_of_iface);
+  // uint8_t num_of_iface = gnrc_netif_numof();
+  // DEBUG("convergence_layer: num of ifaces: %u.\n", num_of_iface);
 
   while(1){
     DEBUG("convergence_layer: waiting for incoming message.\n");

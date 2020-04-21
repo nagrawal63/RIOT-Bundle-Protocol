@@ -18,6 +18,9 @@ extern "C" {
 
 #define RETRANSMIT_TIMER_SECONDS (40000000)
 
+
+extern int iface;
+
 /**
  * @brief   Initialization of the BP thread.
  *

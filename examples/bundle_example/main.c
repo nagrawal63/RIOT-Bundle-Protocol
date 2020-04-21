@@ -26,6 +26,7 @@
 #include "xtimer.h"
 #include "net/gnrc/bundle_protocol/agent.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
+#include "net/gnrc.h"
 #include "bundle_server.c"
 
 #define SLEEP 10000000
@@ -46,6 +47,9 @@ int main(void)
      * receive potentially fast incoming networking packets */
     msg_init_queue(_main_msg_queue, MAIN_QUEUE_SIZE);
     puts("Bundle network stack example application");
+
+    /*Initialize the bundle protocol with pid 9 (pid of network driver)*/
+    bundle_protocol_init(9);
 
     register_application(1234, thread_getpid());
 
