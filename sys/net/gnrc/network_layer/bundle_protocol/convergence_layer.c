@@ -48,7 +48,7 @@ kernel_pid_t gnrc_bp_init(void)
                         THREAD_CREATE_STACKTEST, _event_loop, NULL, "convergence_layer");
 
   DEBUG("convergence_layer: thread created with pid: %d\n",_pid);
-  bundle_protocol_init();
+  // bundle_protocol_init();
   return _pid;
 }
 
@@ -88,6 +88,7 @@ bool check_lifetime_expiry(struct actual_bundle *bundle) {
 
   if (bundle_age_block != NULL) {
     if (bundle->primary_block.lifetime < strtoul((char*)bundle_age_block->block_data, NULL, bundle_age_block->data_len)) {
+      set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
       delete_bundle(bundle);
       return true;
     }
@@ -183,12 +184,13 @@ static void _receive(gnrc_pktsnip_t *pkt)
       return ;
     }
 
-    if (is_redundant_bundle(bundle)) {
+    if (is_redundant_bundle(bundle) || verify_bundle_delivered_to_application(bundle)) {
       DEBUG("convergence_layer: Received this bundle before, discarding bundle");
       if (bundle->primary_block.service_num  != (uint32_t)atoi(CONTACT_MANAGER_SERVICE_NUM)){
         send_non_bundle_ack(bundle, pkt);
       }
       gnrc_pktbuf_release(pkt);
+      set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
       delete_bundle(bundle);
       return ;
     }
@@ -197,6 +199,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
     if (bundle->primary_block.service_num  == (uint32_t)atoi(CONTACT_MANAGER_SERVICE_NUM)) {
       if (!gnrc_bp_dispatch(GNRC_NETTYPE_CONTACT_MANAGER, GNRC_NETREG_DEMUX_CTX_ALL, bundle, GNRC_NETAPI_MSG_TYPE_RCV)) {
         DEBUG("convergence_layer: no contact_manager thread found\n");
+        set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
         delete_bundle(bundle);
       }
       DEBUG("convergence_layer: Printing gnrc_pktbuf_stats before deleting discovery packet with number of users: %d.\n", pkt->users);
@@ -245,6 +248,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
         set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
         if (delivered) {
           DEBUG("convergence_layer: Bundle delivered to application layer, deleting from here.\n");
+          add_bundle_to_delivered_application_list(bundle);
           delete_bundle(bundle);
         }
       } /*Bundle not for this node, forward received bundle*/
@@ -263,7 +267,6 @@ static void _receive(gnrc_pktsnip_t *pkt)
         struct neighbor_t *neighbors_to_send = cur_router->route_receivers(bundle->primary_block.dst_num);
         if (neighbors_to_send == NULL) {
           DEBUG("convergence_layer: Could not find neighbors to send bundle to.\n");
-          delete_bundle(bundle);
           return ;
         }
 
@@ -286,7 +289,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
         gnrc_pktsnip_t *forward_pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
         if (forward_pkt == NULL) {
           DEBUG("convergence_layer: unable to copy data to packet buffer.\n");
-          delete_bundle(bundle);
+          gnrc_pktbuf_release(forward_pkt);
           free(buf);
           return ;
         }
@@ -344,7 +347,6 @@ static void _send(struct actual_bundle *bundle)
     print_potential_neighbor_list(neighbor_list_to_send);
     if (neighbor_list_to_send == NULL) {
       DEBUG("convergence_layer: Could not find neighbors to send bundle to.\n");
-      // delete_bundle(bundle);
       return ;
     }
 
@@ -353,6 +355,7 @@ static void _send(struct actual_bundle *bundle)
       original_bundle_age = atoi((char*)bundle_age_block->block_data);
       if(increment_bundle_age(bundle_age_block, bundle) < 0) {
         DEBUG("convergence_layer: Bundle expired.\n");
+        set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
         delete_bundle(bundle);
         return;
       }
@@ -373,7 +376,7 @@ static void _send(struct actual_bundle *bundle)
     gnrc_pktsnip_t *pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
     if (pkt == NULL) {
       DEBUG("convergence_layer: unable to copy data to discovery packet buffer.\n");
-      delete_bundle(bundle);
+      gnrc_pktbuf_release(pkt);
       free(buf);
       return ;
     }
@@ -400,10 +403,6 @@ static void _send(struct actual_bundle *bundle)
       else {
         bool found = false;
         LL_FOREACH(ack_list, temp_ack_list) {
-          // DEBUG("convergence_layer: Comparing current bundle (%lu,%lu) with temp_ack_list bundle (%lu, %lu)"
-          //       , bundle->primary_block.creation_timestamp[0]
-          //       , bundle->primary_block.creation_timestamp[1], temp_ack_list->bundle->primary_block.creation_timestamp[0]
-          //       , temp_ack_list->bundle->primary_block.creation_timestamp[1]);
           if ((is_same_bundle(bundle, temp_ack_list->bundle) && is_same_neighbor(temp, temp_ack_list->neighbor))) {
             DEBUG("convergence_layer: Already delivered bundle with creation time %lu to %lu, breaking out of loop of ack_list.\n", bundle->local_creation_time, temp->endpoint_num);
             found = true;
@@ -427,7 +426,6 @@ static void _send(struct actual_bundle *bundle)
       DEBUG("convergence_layer: Error resetting bundle age to original.\n");
     }
     set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
-    // delete_bundle(bundle);
     return ;
 }
 
@@ -456,6 +454,9 @@ static void *_event_loop(void *args)
   timer->callback = &retransmit_timer_callback;
   timer->arg = timer;
   xtimer_set(timer, xtimer_ticks_from_usec(RETRANSMIT_TIMER_SECONDS).ticks32);
+
+  uint8_t num_of_iface = gnrc_netif_numof();
+  DEBUG("convergence_layer: num of ifaces: %u.\n", num_of_iface);
 
   while(1){
     DEBUG("convergence_layer: waiting for incoming message.\n");
@@ -544,7 +545,9 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
         if(bundle_age_block != NULL) {
           original_bundle_age = atoi((char*)bundle_age_block->block_data);
           if(increment_bundle_age(bundle_age_block, &temp_bundle->current_bundle) < 0) {
+            DEBUG("convergence_layer: Cannot send this bundle to the new neighbor, it has expired.\n");
             struct bundle_list *next_bundle = temp_bundle->next;
+            set_retention_constraint(&temp_bundle->current_bundle, NO_RETENTION_CONSTRAINT);
             delete_bundle(&temp_bundle->current_bundle);
             temp_bundle = next_bundle;
             continue;
@@ -568,7 +571,7 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
         gnrc_pktsnip_t *pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
         if (pkt == NULL) {
           DEBUG("convergence_layer: unable to copy data to packet buffer.\n");
-          delete_bundle(&temp_bundle->current_bundle);
+          gnrc_pktbuf_release(pkt);
           free(buf);
           return ;
         }
@@ -660,7 +663,6 @@ void send_ack(struct actual_bundle *bundle) {
 
   if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, ack_bundle, GNRC_NETAPI_MSG_TYPE_SND)) {
     DEBUG("convergence_layer: Unable to find BP thread.\n");
-    // gnrc_pktbuf_release(pkt);
     return ;
   }
   delete_bundle(ack_bundle);  
@@ -674,6 +676,7 @@ int deliver_bundles_to_application(struct registration_status *application)
   LL_FOREACH(list, temp) {
     if (list->current_bundle.primary_block.dst_num == strtoul(get_src_num(), NULL, 10) && list->current_bundle.primary_block.service_num == application->service_num) {
       deliver_bundle((void *)(bundle_get_payload_block(&list->current_bundle)->block_data), application);
+      set_retention_constraint(&temp->current_bundle, NO_RETENTION_CONSTRAINT);
       delete_bundle(&temp->current_bundle);
     }
   }

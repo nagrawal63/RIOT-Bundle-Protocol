@@ -108,6 +108,7 @@ static void _receive(struct actual_bundle *bundle)
   }
   DEBUG("contact_manager: Printing new updated neighbor list.\n");
   print_neighbor_list();
+  set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
   delete_bundle(bundle);
   return ;
 }

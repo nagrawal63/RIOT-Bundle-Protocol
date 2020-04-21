@@ -86,6 +86,7 @@ int send(int data)
   buf_data = _encode_discovery_bundle(bundle, &size);
   if(buf_data == NULL) {
     DEBUG("contact_scheduler: Unable to encode bundle.\n");
+    set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
     delete_bundle(bundle);
     return ERROR;
   }
@@ -97,6 +98,7 @@ int send(int data)
   discovery_packet = gnrc_pktbuf_add(NULL, buf_data, (int)size, GNRC_NETTYPE_CONTACT_MANAGER);
   if (discovery_packet == NULL) {
     DEBUG("contact_scheduler: unable to copy data to discovery packet buffer.\n");
+    set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
     delete_bundle(bundle);
     return ERROR;
   }

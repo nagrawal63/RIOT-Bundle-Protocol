@@ -12,6 +12,11 @@ struct bundle_list* free_list;
 struct bundle_list* head_of_store;
 static uint8_t active_bundles = 0;
 
+struct application_delivered_list *head_delivered_list_ptr;
+static uint8_t num_delivered_list = 0;
+
+static void delete_oldest(void);
+
 struct bundle_list* bundle_storage_init(void)
 {
   free_list = malloc(MAX_BUNDLES * sizeof(struct bundle_list));
@@ -205,4 +210,45 @@ bool is_redundant_bundle(struct actual_bundle *bundle)
     return true;
   }
   return false;
+}
+
+int add_bundle_to_delivered_application_list(struct actual_bundle *bundle)
+{
+  if (num_delivered_list == MAX_APPLICATION_DELIVERED_BUNDLES) {
+    delete_oldest();
+  }
+  struct application_delivered_list *new_delivered = malloc(sizeof(struct application_delivered_list));
+  new_delivered->src_num = bundle->primary_block.src_num;
+  new_delivered->creation_timestamp[0] = bundle->primary_block.creation_timestamp[0];
+  new_delivered->creation_timestamp[1] = bundle->primary_block.creation_timestamp[1];
+  new_delivered->fragment_offset = bundle->primary_block.fragment_offset;
+  new_delivered->total_application_data_length = bundle->primary_block.total_application_data_length;
+  LL_APPEND(head_delivered_list_ptr, new_delivered);
+  num_delivered_list++;
+  return OK;
+}
+
+bool verify_bundle_delivered_to_application(struct actual_bundle *bundle)
+{
+  struct application_delivered_list *temp;
+  LL_FOREACH(head_delivered_list_ptr, temp) {
+    if(bundle->primary_block.src_num == temp->src_num) {
+      if (bundle->primary_block.creation_timestamp[0] == temp->creation_timestamp[0]
+          && bundle->primary_block.creation_timestamp[1] == temp->creation_timestamp[1]) {
+        if (bundle->primary_block.fragment_offset == temp->fragment_offset 
+          && bundle->primary_block.total_application_data_length == temp->total_application_data_length) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/* Can simply delete the head of the list since it contains the oldest added element,
+  therefore, no need to keep track of time and thus saving space*/
+static void delete_oldest(void) 
+{
+  LL_DELETE(head_delivered_list_ptr, head_delivered_list_ptr);
+  num_delivered_list--;
 }

@@ -16,8 +16,18 @@ struct bundle_list{
   uint32_t unique_id;
 };
 
+/* Designed to only work for IPN endpoints */
+struct application_delivered_list {
+	uint32_t src_num;
+	uint32_t creation_timestamp[2];
+	uint32_t fragment_offset;
+	uint32_t total_application_data_length;
+	struct application_delivered_list *next;
+};
+
 
 #define MAX_BUNDLES 5
+#define MAX_APPLICATION_DELIVERED_BUNDLES 5
 
 
 struct bundle_list* bundle_storage_init(void);
@@ -32,5 +42,10 @@ struct bundle_list *get_bundle_list(void);
 struct bundle_list *find_oldest_bundle_to_purge(void);
 uint8_t get_current_active_bundles(void);
 bool is_redundant_bundle(struct actual_bundle *bundle);
+
+
+int add_bundle_to_delivered_application_list(struct actual_bundle *bundle);
+bool verify_bundle_delivered_to_application(struct actual_bundle *bundle);
+
 
 #endif

@@ -48,7 +48,7 @@ int main(void)
     puts("Bundle network stack example application");
 
     // Should be a part of the agent.
-    // bundle_storage_init();
+    bundle_protocol_init();
 
     register_application(1234, thread_getpid());
 
