@@ -30,6 +30,7 @@ void bundle_protocol_init(kernel_pid_t pid) {
 	}
 	else {
 		/*Implement handling with multiple network interfaces*/
+		DEBUG("agent: Num of interfaces greater than 1.\n");
 		iface = netif->pid;
 	}
 }

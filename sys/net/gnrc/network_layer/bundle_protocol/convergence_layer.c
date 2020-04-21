@@ -329,6 +329,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
 static void _send(struct actual_bundle *bundle)
 {
   DEBUG("convergence_layer: _send function with iface = %d.\n", iface);
+  uint8_t registration_status = get_registration_status(bundle->primary_block.service_num);
+  if (registration_status == REGISTRATION_ACTIVE) {
     set_retention_constraint(bundle, DISPATCH_PENDING_RETENTION_CONSTRAINT);
     struct router *cur_router = get_router();
     struct neighbor_t *temp;
@@ -426,6 +428,15 @@ static void _send(struct actual_bundle *bundle)
     }
     set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
     return ;
+  }
+  else if (registration_status == REGISTRATION_PASSIVE){
+    DEBUG("convergence_layer: Application not active to send bundles.\n");
+    return ;
+  }
+  else {
+    DEBUG("convergence_layer: Application not registered .\n");
+    return;
+  }
 }
 
 static void _send_packet(gnrc_pktsnip_t *pkt)

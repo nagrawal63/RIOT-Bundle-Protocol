@@ -11,6 +11,7 @@
 
 #define REGISTRATION_ACTIVE 0x01
 #define REGISTRATION_PASSIVE 0x02
+#define NOT_REGISTERED 0x00
 
 struct registration_status {
 	uint32_t service_num;
