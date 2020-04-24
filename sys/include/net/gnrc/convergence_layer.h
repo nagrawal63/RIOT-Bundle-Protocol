@@ -17,7 +17,7 @@ extern "C" {
 #endif
 
 #define RETRANSMIT_TIMER_SECONDS (40000000)
-
+#define NET_STATS_SECONDS (2000000)
 
 extern int iface;
 

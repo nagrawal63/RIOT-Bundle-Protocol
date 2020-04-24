@@ -35,6 +35,7 @@ static void _send(struct actual_bundle *bundle);
 static void _send_packet(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void *args);
 static void retransmit_timer_callback(void *args);
+static void net_stats_callback(void *args);
 static void print_potential_neighbor_list(struct neighbor_t* neighbors);
 static int calculate_size_of_num(uint32_t num);
 
@@ -78,6 +79,7 @@ int gnrc_bp_dispatch(gnrc_nettype_t type, uint32_t demux_ctx, struct actual_bund
 }
 
 void deliver_bundle(void *ptr, struct registration_status *application) {
+  update_statistics(BUNDLE_DELIVERY);
   msg_t msg;
   msg.content.ptr = ptr;
   msg_try_send(&msg, application->pid);
@@ -141,6 +143,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
 
   if (is_packet_ack(pkt)) {
     DEBUG("convergence_layer: ack received.\n");
+    update_statistics(ACK_RECEIVE);
     // (void) cur_router;
     uint8_t *temp_addr;
     int src_addr_len;
@@ -171,6 +174,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
     
   }
   else {
+    update_statistics(BUNDLE_RECEIVE);
     struct actual_bundle *bundle = create_bundle();
     if (bundle_decode(bundle, pkt->data, pkt->size) == ERROR) {
       DEBUG("convergence_layer: Packet received not for bundle protocol.\n");
@@ -184,7 +188,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
       return ;
     }
 
-    if (is_redundant_bundle(bundle) || verify_bundle_delivered_to_application(bundle)) {
+    if (is_redundant_bundle(bundle) || verify_bundle_processed(bundle)) {
       DEBUG("convergence_layer: Received this bundle before, discarding bundle");
       if (bundle->primary_block.service_num  != (uint32_t)atoi(CONTACT_MANAGER_SERVICE_NUM)){
         send_non_bundle_ack(bundle, pkt);
@@ -202,7 +206,9 @@ static void _receive(gnrc_pktsnip_t *pkt)
         set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
         delete_bundle(bundle);
       }
-      DEBUG("convergence_layer: Printing gnrc_pktbuf_stats before deleting discovery packet with number of users: %d.\n", pkt->users);
+      else {
+        update_statistics(DISCOVERY_BUNDLE_RECEIVE);
+      }
       gnrc_pktbuf_release(pkt);
     }
 #endif
@@ -247,7 +253,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
         set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
         if (delivered) {
           DEBUG("convergence_layer: Bundle delivered to application layer, deleting from here.\n");
-          add_bundle_to_delivered_application_list(bundle);
+          add_bundle_to_processed_bundle_list(bundle);
           delete_bundle(bundle);
         }
       } /*Bundle not for this node, forward received bundle*/
@@ -399,6 +405,7 @@ static void _send(struct actual_bundle *bundle)
         }
         if (netif->pid != 0) {
           gnrc_netapi_send(netif->pid, pkt);
+          update_statistics(BUNDLE_SEND);
         }
       } 
       else {
@@ -419,6 +426,7 @@ static void _send(struct actual_bundle *bundle)
           }
           if (netif->pid != 0) {
             gnrc_netapi_send(netif->pid, pkt);
+            update_statistics(BUNDLE_SEND);
           }
         }
       }
@@ -446,6 +454,8 @@ static void _send_packet(gnrc_pktsnip_t *pkt)
 
   if (netif->pid != 0) {
     gnrc_netapi_send(netif->pid, pkt);
+    update_statistics(BUNDLE_SEND);
+    update_statistics(DISCOVERY_BUNDLE_SEND);
   }
 }
 
@@ -467,6 +477,11 @@ static void *_event_loop(void *args)
 
   // uint8_t num_of_iface = gnrc_netif_numof();
   // DEBUG("convergence_layer: num of ifaces: %u.\n", num_of_iface);
+
+  xtimer_t *net_stats_timer = malloc(sizeof(xtimer_t));
+  net_stats_timer->callback = &net_stats_callback;
+  net_stats_timer->arg = net_stats_timer;
+  xtimer_set(net_stats_timer, xtimer_ticks_from_usec(NET_STATS_SECONDS).ticks32);
 
   while(1){
     DEBUG("convergence_layer: waiting for incoming message.\n");
@@ -492,6 +507,11 @@ static void *_event_loop(void *args)
   return NULL;
 }
 
+static void net_stats_callback(void *args) {
+  print_network_statistics();
+  xtimer_set(args, xtimer_ticks_from_usec(NET_STATS_SECONDS).ticks32);
+}
+
 static void retransmit_timer_callback(void *args) {
   printf("convergence_layer: Inside retransmit timer callback.\n");
   (void) args;
@@ -505,6 +525,13 @@ static void retransmit_timer_callback(void *args) {
     if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, &temp->current_bundle, GNRC_NETAPI_MSG_TYPE_SND)) {
       printf("convergence_layer: Unable to find BP thread.\n");
       return ;
+    } 
+    /*update statistics if bundle successfully dispatched for retransmission to BP thread
+     *This is although ignoring the case where the bundle transmission is stopped due to lifetime expiry
+     *or any other reason
+     */
+    else {
+      update_statistics(BUNDLE_RETRANSMIT);
     }
     temp = temp->next;
     i++;
@@ -594,6 +621,7 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
         if (netif->pid != 0) {
           DEBUG("convergence_layer: Sending stored packet to process with pid %d.\n", netif->pid);
           gnrc_netapi_send(netif->pid, pkt);
+          update_statistics(BUNDLE_SEND);
         }
         /*Will reset bundle age to original so that the bundle's age can be correctly identified
           when updating the bundle age the next time when sending to someone else.
@@ -641,6 +669,7 @@ void send_non_bundle_ack(struct actual_bundle *bundle, gnrc_pktsnip_t *pkt) {
   }
   if (netif->pid != 0) {
     gnrc_netapi_send(netif->pid, ack_payload);
+    update_statistics(ACK_SEND);
   }
 }
 

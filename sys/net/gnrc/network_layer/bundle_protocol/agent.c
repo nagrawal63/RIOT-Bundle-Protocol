@@ -11,7 +11,8 @@
 #include "debug.h"
 
 static struct registration_status *application_list = NULL;
-// static gnrc_netreg_entry_t server = GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL, KERNEL_PID_UNDEF);
+
+struct statistics network_stats;
 
 static int calculate_size_of_num(uint32_t num);
 
@@ -33,6 +34,16 @@ void bundle_protocol_init(kernel_pid_t pid) {
 		DEBUG("agent: Num of interfaces greater than 1.\n");
 		iface = netif->pid;
 	}
+
+	network_stats.bundles_delivered = 0;
+	network_stats.bundles_received = 0;
+	network_stats.bundles_forwarded = 0;
+	network_stats.bundles_retransmitted = 0;
+	network_stats.bundles_sent = 0;
+	network_stats.acks_sent = 0;
+	network_stats.acks_received = 0;
+	network_stats.discovery_bundle_sent = 0;
+	network_stats.discovery_bundle_receive = 0;
 }
 
 void send_bundle(uint8_t *payload_data, size_t data_len, char *dst, char *service_num, int iface, char *report_num, uint8_t crctype, uint32_t lifetime) 
@@ -88,6 +99,12 @@ void send_bundle(uint8_t *payload_data, size_t data_len, char *dst, char *servic
 
 bool register_application(uint32_t service_num, kernel_pid_t pid)
 {
+	struct registration_status *temp;
+	LL_SEARCH_SCALAR(application_list, temp, service_num, service_num);
+	if (temp != NULL) {
+		DEBUG("agent: Application already running.\n");
+		return false;
+	}
 	struct registration_status *new_application = malloc(sizeof(struct registration_status));
 	new_application->service_num = service_num;
 	new_application->status = REGISTRATION_ACTIVE;
@@ -140,4 +157,71 @@ struct registration_status *get_registration (uint32_t service_num)
 		return 0;
 	}
 	return temp;
+}
+
+bool unregister_application(uint32_t service_num) 
+{
+	struct registration_status *temp;
+	LL_SEARCH_SCALAR(application_list, temp, service_num, service_num);
+	if (temp == NULL) {
+		DEBUG("agent: Couldn't find application running.\n");
+		return false;
+	}
+	else {
+		LL_DELETE(application_list, temp);
+		return true;
+	}
+}
+
+void update_statistics(int type)
+{
+	switch(type) {
+		case BUNDLE_DELIVERY:
+			network_stats.bundles_delivered++;
+			break;
+		case BUNDLE_RECEIVE:
+			network_stats.bundles_received++;
+			break;
+		case BUNDLE_SEND:
+			network_stats.bundles_sent++;
+			break;
+		case BUNDLE_FORWARD:
+			network_stats.bundles_forwarded++;
+			break;
+		case ACK_SEND:
+			network_stats.acks_sent++;
+			break;
+		case ACK_RECEIVE:
+			network_stats.acks_received++;
+			break;
+		case DISCOVERY_BUNDLE_RECEIVE:
+			network_stats.discovery_bundle_receive++;
+			break;
+		case DISCOVERY_BUNDLE_SEND:
+			network_stats.discovery_bundle_sent++;
+			break;
+		case BUNDLE_RETRANSMIT:
+			network_stats.bundles_retransmitted++;
+			break;
+	}
+}
+
+void print_network_statistics(void)
+{
+	// printf("Network stats:\n");
+	// printf("#*#*#Total bundles sent : %d.\n", network_stats.bundles_sent);
+	// printf("#*#*#Total bundles recieved : %d.\n", network_stats.bundles_received);
+	// printf("#*#*#Total bundles forwarded : %d.\n", network_stats.bundles_forwarded);
+	// printf("#*#*#Total bundles delivered : %d.\n", network_stats.bundles_delivered);
+	// printf("#*#*#Total bundles transmitted: %d.\n", network_stats.bundles_retransmitted);
+	// printf("#*#*#Total acks sent : %d.\n", network_stats.acks_sent);
+	// printf("#*#*#Total acks received : %d.\n", network_stats.acks_received);
+	// printf("#*#*#Total discovery bundles sent : %d.\n", network_stats.discovery_bundle_sent);
+	// printf("#*#*#Total discovery bundles received : %d.\n", network_stats.discovery_bundle_receive);
+	// printf("#*#*#Bundles in storage: %d.\n", get_current_active_bundles());
+	// printf("#*#*#Current system time: %lu.\n", xtimer_now().ticks32);
+
+	printf("#*#*,%lu, %d, %d, %d, %d, %d, %d, %d, %d\n",xtimer_now().ticks32, get_current_active_bundles(), network_stats.bundles_sent, 
+						network_stats.bundles_received, network_stats.bundles_forwarded
+					, network_stats.bundles_retransmitted, network_stats.bundles_delivered, network_stats.acks_sent, network_stats.acks_received);
 }

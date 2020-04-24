@@ -76,6 +76,11 @@ static void _receive(struct actual_bundle *bundle)
 
   struct neighbor_t *neighbor = (struct neighbor_t*)malloc(sizeof(struct neighbor_t));
 
+  if (neighbor == NULL) {
+    DEBUG("contact_manager: Could not allocate memory for new neighbor.\n");
+    return ;
+  }
+
   neighbor->endpoint_scheme = bundle->primary_block.endpoint_scheme;
   if (neighbor->endpoint_scheme == IPN) {
     neighbor->endpoint_num = bundle->primary_block.src_num;
