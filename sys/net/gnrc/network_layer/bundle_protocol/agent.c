@@ -221,7 +221,7 @@ void print_network_statistics(void)
 	// printf("#*#*#Bundles in storage: %d.\n", get_current_active_bundles());
 	// printf("#*#*#Current system time: %lu.\n", xtimer_now().ticks32);
 
-	DEBUG("#*#*,%lu, %d, %d, %d, %d, %d, %d, %d, %d,\n",xtimer_now().ticks32, get_current_active_bundles(), network_stats.bundles_sent, 
+	printf("#*#*,%lu, %d, %d, %d, %d, %d, %d, %d, %d,\n",xtimer_now().ticks32, get_current_active_bundles(), network_stats.bundles_sent, 
 						network_stats.bundles_received, network_stats.bundles_forwarded
 					, network_stats.bundles_retransmitted, network_stats.bundles_delivered, network_stats.acks_sent, network_stats.acks_received);
 }
