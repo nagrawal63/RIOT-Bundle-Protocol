@@ -1,9 +1,12 @@
 import serial
 import csv
+import os
 
+myhost = os.uname()[1]
 ser = serial.Serial(port = '/dev/ttyACM0', baudrate=115200)
 ser.flushInput()
-csv_file = open('out.csv','w')
+filename = 'out_'+myhost+'.csv'
+csv_file = open(filename,'w')
 with csv_file :
     col_names = ['System time', 'Bundles in storage', 'Bundles sent', 'Bundles received', 'Bundles forwarded', 'Bundles retransmitted', 'Bundles Delivered', 'Ack sent', 'Ack received']
     writer = csv.DictWriter(csv_file, fieldnames=col_names)
