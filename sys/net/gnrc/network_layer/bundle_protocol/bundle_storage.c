@@ -69,7 +69,10 @@ struct actual_bundle* get_space_for_bundle(void)
 // first node is to be deleted and when the node is not found
 bool delete_bundle(struct actual_bundle* bundle)
 {
-
+  if (bundle == NULL) {
+    DEBUG("bundle_storage: Bundle to be deleted is NULL.\n");
+    return false;
+  }
   DEBUG("bundle_storage: Deleting bundle created at %lu.\n", bundle->local_creation_time);
   if (get_retention_constraint(bundle) != NO_RETENTION_CONSTRAINT) {
     DEBUG("bundle_storage: Cannot delete bundle since bundle's retention constraint is %u.\n", get_retention_constraint(bundle));
