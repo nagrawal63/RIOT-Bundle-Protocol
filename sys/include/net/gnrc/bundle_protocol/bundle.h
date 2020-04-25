@@ -164,6 +164,7 @@ uint8_t bundle_set_attribute(struct actual_bundle* bundle, uint8_t type, void* v
 void print_bundle(struct actual_bundle* bundle);
 int increment_bundle_age(struct bundle_canonical_block_t *bundle_age_block, struct actual_bundle *bundle);
 int reset_bundle_age(struct bundle_canonical_block_t *bundle_age_block, uint32_t original_age);
+bool is_expired_bundle(struct actual_bundle *bundle);
 
 void set_retention_constraint(struct actual_bundle *bundle, uint8_t constraint);
 uint8_t get_retention_constraint(struct actual_bundle *bundle);

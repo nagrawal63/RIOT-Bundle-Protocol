@@ -1364,6 +1364,22 @@ int reset_bundle_age(struct bundle_canonical_block_t *bundle_age_block, uint32_t
   return OK;
 }
 
+bool is_expired_bundle(struct actual_bundle *bundle) {
+  struct bundle_canonical_block_t *block = get_block_by_type(bundle, BUNDLE_BLOCK_TYPE_BUNDLE_AGE);
+  if (block != NULL) {
+    uint32_t usecs_from_bundle = strtoul((char*)block->block_data, NULL, block->data_len);
+    if ((usecs_from_bundle + (xtimer_now().ticks32 - bundle->local_creation_time)) >= bundle->primary_block.lifetime) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+  else {
+    return false;
+  }
+}
+
 void set_retention_constraint(struct actual_bundle *bundle, uint8_t constraint) {
   bundle->retention_constraint = constraint;
 }
