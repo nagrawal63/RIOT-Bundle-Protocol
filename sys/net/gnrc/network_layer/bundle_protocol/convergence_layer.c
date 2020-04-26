@@ -125,7 +125,7 @@ bool is_packet_ack(gnrc_pktsnip_t *pkt) {
   od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
   strncpy(temp, pkt->data, ACK_IDENTIFIER_SIZE);
   printf("convergence_layer: string in is_packet_ack: %s.\n", temp);
-  if (strcmp(temp, "ack") == 0) {
+  if (strstr(temp, "ack") != NULL) {
     return true;
   }
   return false;
