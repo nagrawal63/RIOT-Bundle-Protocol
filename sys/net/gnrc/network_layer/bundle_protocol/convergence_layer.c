@@ -308,7 +308,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
         // TODO: Add checking from ack list since it is possible we receive the same bundle and it might be sent again
         //       to other nodes
         LL_FOREACH(neighbors_to_send, temp) {
-          if (temp->endpoint_scheme == IPN && temp->endpoint_num != previous_neighbor->endpoint_num && memcmp(temp->l2addr, previous_neighbor->l2addr, temp->l2addr_len) != 0) {
+          if (temp->endpoint_scheme == IPN && temp->endpoint_num != bundle->previous_endpoint_num && memcmp(temp->l2addr, previous_neighbor->l2addr, temp->l2addr_len) != 0) {
             DEBUG("convergence_layer:Forwarding packet to neighbor with eid %lu.\n", temp->endpoint_num);
             sent = true;
             if (netif != NULL) {
