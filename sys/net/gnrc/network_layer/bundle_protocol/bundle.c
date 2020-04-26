@@ -7,7 +7,7 @@
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "od.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG (1)
 #include "debug.h"
 
 static uint8_t sequence_num = 0;
@@ -1338,7 +1338,7 @@ void print_bundle(struct actual_bundle* bundle)
   int i = 0;
   while (i < bundle->num_of_blocks) {
     DEBUG("Bundle canonical block of type: %d with data_len: %u and data: \n", temp[i].type, temp[i].data_len);
-    // od_hex_dump(temp[i].block_data, temp[i].data_len, OD_WIDTH_DEFAULT);
+    od_hex_dump(temp[i].block_data, temp[i].data_len, OD_WIDTH_DEFAULT);
 
     i++;
   }

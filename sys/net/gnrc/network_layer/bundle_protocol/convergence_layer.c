@@ -13,7 +13,7 @@
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/gnrc/bundle_protocol/routing.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG    (1)
 #include "debug.h"
 
 #include "od.h"
@@ -223,7 +223,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
 
       DEBUG("convergence_layer: Not a discovery packet with destination: %lu, source: %lu and current address: %lu !!!!!!!!!!!!!!!!!!\n", bundle->primary_block.dst_num, bundle->primary_block.src_num, (uint32_t)atoi(get_src_num()));
       DEBUG("convergence_layer: ***********Data in bundle.****************\n");
-      // od_hex_dump(bundle_get_payload_block(bundle)->block_data, bundle_get_payload_block(bundle)->data_len, OD_WIDTH_DEFAULT);
+      od_hex_dump(bundle_get_payload_block(bundle)->block_data, bundle_get_payload_block(bundle)->data_len, OD_WIDTH_DEFAULT);
 
       uint8_t *temp_addr;
       int src_addr_len;
@@ -298,11 +298,11 @@ static void _receive(gnrc_pktsnip_t *pkt)
         uint8_t *buf = malloc(required_size);
         nanocbor_encoder_init(&enc, buf, required_size);
         bundle_encode(bundle, &enc);
-        printf("convergence_layer: Encoded bundle while forwarding: ");
+        DEBUG("convergence_layer: Encoded bundle while forwarding: ");
         for(int i=0;i<(int)required_size;i++){
-          printf("%02x",buf[i]);
+          DEBUG("%02x",buf[i]);
         }
-        printf(" at %p\n", bundle);
+        DEBUG(" at %p\n", bundle);
 
         gnrc_pktsnip_t *forward_pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
         if (forward_pkt == NULL) {
@@ -387,11 +387,11 @@ static void _send(struct actual_bundle *bundle)
     uint8_t *buf = malloc(required_size);
     nanocbor_encoder_init(&enc, buf, required_size);
     bundle_encode(bundle, &enc);
-    printf("convergence_layer: Encoded bundle: ");
+    DEBUG("convergence_layer: Encoded bundle: ");
     for(int i=0;i<(int)required_size;i++){
-      printf("%02x",buf[i]);
+      DEBUG("%02x",buf[i]);
     }
-    printf(" at %p\n", bundle);
+    DEBUG(" at %p\n", bundle);
 
     gnrc_pktsnip_t *pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
     if (pkt == NULL) {
@@ -553,7 +553,7 @@ static void net_stats_callback(void *args) {
 }
 
 static void retransmit_timer_callback(void *args) {
-  // printf("convergence_layer: Inside retransmit timer callback.\n");
+  printf("convergence_layer: Inside retransmit timer callback.\n");
   (void) args;
   struct bundle_list *bundle_storage_list = get_bundle_list(), *temp;
   uint8_t active_bundles = get_current_active_bundles(), i = 0;
@@ -641,11 +641,11 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
         uint8_t *buf = malloc(required_size);
         nanocbor_encoder_init(&enc, buf, required_size);
         bundle_encode(&temp_bundle->current_bundle, &enc);
-        printf("convergence_layer: Encoded bundle: ");
+        DEBUG("convergence_layer: Encoded bundle: ");
         for(int i=0;i<(int)required_size;i++){
-          printf("%02x",buf[i]);
+          DEBUG("%02x",buf[i]);
         }
-        printf(" at %p\n", &temp_bundle->current_bundle);
+        DEBUG(" at %p\n", &temp_bundle->current_bundle);
 
         gnrc_pktsnip_t *pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
         if (pkt == NULL) {

@@ -10,7 +10,7 @@
 #include "net/gnrc.h"
 #include "net/gnrc/netif/hdr.h"
 
-#define ENABLE_DEBUG  (0)
+#define ENABLE_DEBUG  (1)
 #include "debug.h"
 #include "od.h"
 

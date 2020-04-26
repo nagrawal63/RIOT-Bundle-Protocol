@@ -31,13 +31,13 @@ USEMODULE += routing_epidemic
 # USEMODULE += gnrc_rpl
 # USEMODULE += auto_init_gnrc_rpl
 # This application dumps received packets to STDIO using the pktdump module
-# USEMODULE += gnrc_pktdump
+USEMODULE += gnrc_pktdump
 # Additional networking modules that can be dropped if not needed
 # USEMODULE += gnrc_icmpv6_echo
 # Add also the shell, some shell commands
-# USEMODULE += shell
-# USEMODULE += shell_commands
-# USEMODULE += ps
+USEMODULE += shell
+USEMODULE += shell_commands
+USEMODULE += ps
 USEMODULE += checksum
 # USEMODULE += netstats_l2
 # USEMODULE += netstats_ipv6
