@@ -496,9 +496,9 @@ static void *_event_loop(void *args)
   // testing_timer->callback = &testing_callback;
   // testing_timer->arg = testing_timer;
   // xtimer_set(testing_timer, xtimer_ticks_from_usec(TESTING_SECONDS).ticks32);
-  msg_t testing_msg;
-  testing_msg.type = GNRC_NETAPI_MSG_TYPE_GET;
-  xtimer_set_msg(testing_timer, TESTING_SECONDS, &testing_msg, thread_getpid());
+  // msg_t testing_msg;
+  // testing_msg.type = GNRC_NETAPI_MSG_TYPE_GET;
+  // xtimer_set_msg(testing_timer, TESTING_SECONDS, &testing_msg, thread_getpid());
 
   while(1){
     DEBUG("convergence_layer: waiting for incoming message.\n");
