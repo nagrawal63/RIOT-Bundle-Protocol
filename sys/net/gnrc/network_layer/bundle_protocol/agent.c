@@ -54,20 +54,25 @@ void send_bundle(uint8_t *payload_data, size_t data_len, char *dst, char *servic
 	uint64_t payload_flag;
 
 	if (calculate_canonical_flag(&payload_flag, false) < 0) {
-	printf("Error creating payload flag.\n");
-	return;
+		DEBUG("agent: Error creating payload flag.\n");
+		return;
+	}
+
+	if (strcmp(dst, get_src_num()) == 0) {
+		DEBUG("agent: Bundle destination and source same.\n");
+		return ;
 	}
 
 
 	struct actual_bundle *bundle;
 	if((bundle = create_bundle()) == NULL){
-	printf("Could not create bundle.\n");
+	DEBUG("agent: Could not create bundle.\n");
 	return;
 	}
 
 	int res = fill_bundle(bundle, 7, IPN, dst, report_num, lifetime, crctype, service_num, iface);
 	if (res < 0) {
-		printf("Invalid bundle.\n");
+		DEBUG("agent: Invalid bundle.\n");
 		delete_bundle(bundle);
 		return ;
 	}
@@ -79,8 +84,8 @@ void send_bundle(uint8_t *payload_data, size_t data_len, char *dst, char *servic
 	uint64_t bundle_age_flag;
 
 	if (calculate_canonical_flag(&bundle_age_flag, false) < 0) {
-	printf("Error creating payload flag.\n");
-	return ;
+		DEBUG("agent: Error creating payload flag.\n");
+		return ;
 	}
 
 	uint32_t initial_bundle_age = 0;
@@ -91,7 +96,7 @@ void send_bundle(uint8_t *payload_data, size_t data_len, char *dst, char *servic
 	bundle_add_block(bundle, BUNDLE_BLOCK_TYPE_BUNDLE_AGE, bundle_age_flag, bundle_age_data, crctype, bundle_age_len);
 
 	if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, bundle, GNRC_NETAPI_MSG_TYPE_SND)) {
-	    printf("Unable to find BP thread.\n");
+	    DEBUG("agent: Unable to find BP thread.\n");
 	    delete_bundle(bundle);
 	    return ;
 	}
