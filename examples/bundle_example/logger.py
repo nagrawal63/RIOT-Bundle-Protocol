@@ -14,10 +14,8 @@ with csv_file :
     writer.writeheader()
     while True:
         read_bytes = ser.readline()
-        print(read_bytes)
         try :
             ser_bytes = read_bytes.decode("utf-8")
-            print(ser_bytes)
             if "#*#*" in ser_bytes:
                 arr = ser_bytes.split(",")
                 print(arr)
