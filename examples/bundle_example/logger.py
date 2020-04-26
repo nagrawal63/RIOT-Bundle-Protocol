@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import serial
 import csv
 import os
