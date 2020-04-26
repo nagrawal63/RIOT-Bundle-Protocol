@@ -225,9 +225,9 @@ static void _receive(gnrc_pktsnip_t *pkt)
       src_addr_len = gnrc_netif_hdr_get_srcaddr(pkt, &temp_addr);
 
       uint8_t src_addr[src_addr_len];
+      strncpy((char*)src_addr, (char*)temp_addr, src_addr_len);
       struct neighbor_t *previous_neighbor = get_neighbor_from_l2addr(src_addr);
 
-      strncpy((char*)src_addr, (char*)temp_addr, src_addr_len);
       /*
         Storing this information so that it can be used as previuos node information while retransmitting
       */
