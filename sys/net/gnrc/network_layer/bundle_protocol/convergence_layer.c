@@ -36,6 +36,7 @@ static void _send_packet(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void *args);
 static void retransmit_timer_callback(void *args);
 static void net_stats_callback(void *args);
+static void testing_callback (void *args);
 static void print_potential_neighbor_list(struct neighbor_t* neighbors);
 static int calculate_size_of_num(uint32_t num);
 
@@ -228,10 +229,16 @@ static void _receive(gnrc_pktsnip_t *pkt)
       strncpy((char*)src_addr, (char*)temp_addr, src_addr_len);
       struct neighbor_t *previous_neighbor = get_neighbor_from_l2addr(src_addr);
 
-      /*
-        Storing this information so that it can be used as previuos node information while retransmitting
-      */
-      bundle->previous_endpoint_num = previous_neighbor->endpoint_num;
+      if (previous_neighbor == NULL) {
+        DEBUG("convergence_layer: Could not find previous neighbor for this received bundle.\n");
+        bundle->previous_endpoint_num = 0;
+      }
+      else {
+        /*
+          Storing this information so that it can be used as previuos node information while retransmitting
+        */
+        bundle->previous_endpoint_num = previous_neighbor->endpoint_num;
+      }
       DEBUG("convergence_layer: Received data from %lu and actual variable is %lu.\n", bundle->previous_endpoint_num, previous_neighbor->endpoint_num);
 
       /*Sending acknowledgement for received bundle*/
@@ -485,6 +492,11 @@ static void *_event_loop(void *args)
   net_stats_timer->arg = net_stats_timer;
   xtimer_set(net_stats_timer, xtimer_ticks_from_usec(NET_STATS_SECONDS).ticks32);
 
+  xtimer_t *testing_timer = malloc(sizeof(xtimer_t));
+  testing_timer->callback = &testing_callback;
+  testing_timer->arg = testing_timer;
+  xtimer_set(testing_timer, xtimer_ticks_from_usec(TESTING_SECONDS).ticks32);
+
   while(1){
     DEBUG("convergence_layer: waiting for incoming message.\n");
     msg_receive(&msg);
@@ -507,6 +519,14 @@ static void *_event_loop(void *args)
     }
   }
   return NULL;
+}
+
+static void testing_callback (void *args) {
+  if (strtoul(get_src_num(), NULL, 10) == 1) {
+    printf("convergence_layer: Sending test packet.\n");
+    send_bundle("test", 4, 4, 1234, iface, "1", NOCRC, DUMMY_PAYLOAD_LIFETIME);
+  }
+  xtimer_set(args, xtimer_ticks_from_usec(TESTING_SECONDS).ticks32);
 }
 
 static void net_stats_callback(void *args) {
