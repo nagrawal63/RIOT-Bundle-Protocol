@@ -36,7 +36,7 @@ static void _send_packet(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void *args);
 static void retransmit_timer_callback(void *args);
 static void net_stats_callback(void *args);
-static void testing_callback (void *args);
+// static void testing_callback (void *args);
 static void print_potential_neighbor_list(struct neighbor_t* neighbors);
 static int calculate_size_of_num(uint32_t num);
 
@@ -493,9 +493,12 @@ static void *_event_loop(void *args)
   xtimer_set(net_stats_timer, xtimer_ticks_from_usec(NET_STATS_SECONDS).ticks32);
 
   xtimer_t *testing_timer = malloc(sizeof(xtimer_t));
-  testing_timer->callback = &testing_callback;
-  testing_timer->arg = testing_timer;
-  xtimer_set(testing_timer, xtimer_ticks_from_usec(TESTING_SECONDS).ticks32);
+  // testing_timer->callback = &testing_callback;
+  // testing_timer->arg = testing_timer;
+  // xtimer_set(testing_timer, xtimer_ticks_from_usec(TESTING_SECONDS).ticks32);
+  msg_t testing_msg;
+  testing_msg.type = GNRC_NETAPI_MSG_TYPE_GET;
+  xtimer_set_msg(testing_timer, TESTING_SECONDS, &testing_msg, thread_getpid());
 
   while(1){
     DEBUG("convergence_layer: waiting for incoming message.\n");
@@ -513,6 +516,17 @@ static void *_event_loop(void *args)
           DEBUG("convergence_layer: GNRC_NETDEV_MSG_TYPE_RCV received\n");
           _receive(msg.content.ptr);
           break;
+      case GNRC_NETAPI_MSG_TYPE_GET:
+          DEBUG("convergence_layer: message received for testing bundle send.\n");
+          uint8_t *data = (uint8_t*) malloc(4*sizeof(char));
+          char* dst = (char*)malloc(sizeof(char)), *service = (char*) malloc(4*sizeof(char)), *report = (char*) malloc(sizeof(char));
+          data = (uint8_t*) "test";
+          dst = "4";
+          service = "1234";
+          report = "1";
+          send_bundle(data, 4, dst, service, iface, report, NOCRC, DUMMY_PAYLOAD_LIFETIME);
+          xtimer_set_msg(testing_timer, TESTING_SECONDS, &testing_msg, thread_getpid());
+          break;
       default:
         DEBUG("convergence_layer: Successfully entered bp, yayyyyyy!!\n");
         break;
@@ -521,13 +535,14 @@ static void *_event_loop(void *args)
   return NULL;
 }
 
-static void testing_callback (void *args) {
-  if (strtoul(get_src_num(), NULL, 10) == 1) {
-    printf("convergence_layer: Sending test packet.\n");
-    send_bundle("test", 4, "4", "1234", iface, "1", NOCRC, DUMMY_PAYLOAD_LIFETIME);
-  }
-  xtimer_set(args, xtimer_ticks_from_usec(TESTING_SECONDS).ticks32);
-}
+// static void testing_callback (void *args) {
+//   if (strtoul(get_src_num(), NULL, 10) == 1) {
+
+//     printf("convergence_layer: Sending test packet.\n");
+    
+//   }
+//   xtimer_set(args, xtimer_ticks_from_usec(TESTING_SECONDS).ticks32);
+// }
 
 static void net_stats_callback(void *args) {
   print_network_statistics();
