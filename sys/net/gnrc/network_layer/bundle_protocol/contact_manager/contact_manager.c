@@ -73,7 +73,7 @@ static void _receive(struct actual_bundle *bundle)
     DEBUG("contact_manager: Cannot extract payload block from received packet.\n");
     return ;
   }
-  update_statistics(DISCOVERY_BUNDLE_RECEIVE);
+  // update_statistics(DISCOVERY_BUNDLE_RECEIVE);
   struct neighbor_t *neighbor = (struct neighbor_t*)malloc(sizeof(struct neighbor_t));
 
   if (neighbor == NULL) {
@@ -155,7 +155,7 @@ static void _send(gnrc_pktsnip_t *pkt)
   if(iface != 0) {
     /*Setting netif to old value */
     gnrc_netif_hdr_set_netif(pkt->data, netif);
-    update_statistics(DISCOVERY_BUNDLE_SEND);
+    // update_statistics(DISCOVERY_BUNDLE_SEND);
     gnrc_netapi_dispatch_send(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, pkt);
   }
 }
