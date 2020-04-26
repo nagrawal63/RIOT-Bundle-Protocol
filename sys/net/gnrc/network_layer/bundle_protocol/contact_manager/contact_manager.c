@@ -240,6 +240,7 @@ struct neighbor_t *get_neighbor_from_l2addr(uint8_t *addr) {
   LL_FOREACH(head_of_neighbors, temp) {
     if(memcmp(temp->l2addr, addr, temp->l2addr_len) == 0) {
       found = true;
+      DEBUG("contact_manager: Found neighbor with address %lu.\n", temp->endpoint_num);
       break;
     }
   }
