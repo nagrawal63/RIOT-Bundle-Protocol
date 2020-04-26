@@ -238,7 +238,7 @@ struct neighbor_t *get_neighbor_from_l2addr(uint8_t *addr) {
   bool found = false;
   struct neighbor_t *temp = NULL;
   LL_FOREACH(head_of_neighbors, temp) {
-    if(strcmp((char*)temp->l2addr, (char*)addr)) {
+    if(memcmp(temp->l2addr, addr, temp->l2addr_len) == 0) {
       found = true;
       break;
     }
