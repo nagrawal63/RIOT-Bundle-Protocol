@@ -492,7 +492,7 @@ static void *_event_loop(void *args)
   net_stats_timer->arg = net_stats_timer;
   xtimer_set(net_stats_timer, xtimer_ticks_from_usec(NET_STATS_SECONDS).ticks32);
 
-  xtimer_t *testing_timer = malloc(sizeof(xtimer_t));
+  // xtimer_t *testing_timer = malloc(sizeof(xtimer_t));
   // testing_timer->callback = &testing_callback;
   // testing_timer->arg = testing_timer;
   // xtimer_set(testing_timer, xtimer_ticks_from_usec(TESTING_SECONDS).ticks32);
@@ -526,7 +526,7 @@ static void *_event_loop(void *args)
             service = "1234";
             report = "1";
             send_bundle(data, 4, dst, service, iface, report, NOCRC, DUMMY_PAYLOAD_LIFETIME);
-            xtimer_set_msg(testing_timer, TESTING_SECONDS, &testing_msg, thread_getpid());
+            // xtimer_set_msg(testing_timer, TESTING_SECONDS, &testing_msg, thread_getpid());
           }
           break;
       default:
