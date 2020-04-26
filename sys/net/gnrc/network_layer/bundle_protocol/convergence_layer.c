@@ -178,6 +178,11 @@ static void _receive(gnrc_pktsnip_t *pkt)
   else {
     update_statistics(BUNDLE_RECEIVE);
     struct actual_bundle *bundle = create_bundle();
+    if (bundle == NULL) {
+      DEBUG("convergence_layer: Could not allocate space for this new bundle.\n");
+      gnrc_pktbuf_release(pkt);
+      return ;
+    }
     if (bundle_decode(bundle, pkt->data, pkt->size) == ERROR) {
       DEBUG("convergence_layer: Packet received not for bundle protocol.\n");
       gnrc_pktbuf_release(pkt);

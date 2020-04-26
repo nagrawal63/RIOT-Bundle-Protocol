@@ -41,6 +41,7 @@ struct actual_bundle* get_space_for_bundle(void)
   while(temp != NULL && i < active_bundles) {
     if (is_expired_bundle(&temp->current_bundle)) {
       set_retention_constraint(&temp->current_bundle, NO_RETENTION_CONSTRAINT);
+      get_router()->notify_bundle_deletion(&temp->current_bundle);
       delete_bundle(&temp->current_bundle);
     }
     temp = temp->next;
