@@ -1368,7 +1368,11 @@ bool is_expired_bundle(struct actual_bundle *bundle) {
   struct bundle_canonical_block_t *block = get_block_by_type(bundle, BUNDLE_BLOCK_TYPE_BUNDLE_AGE);
   if (block != NULL) {
     uint32_t usecs_from_bundle = strtoul((char*)block->block_data, NULL, block->data_len);
+    DEBUG("bundle: Bundle current age: %lu and lifetime : %lu.\n", (usecs_from_bundle + (xtimer_now().ticks32 - bundle->local_creation_time))
+                                                                                    , bundle->primary_block.lifetime);
     if ((usecs_from_bundle + (xtimer_now().ticks32 - bundle->local_creation_time)) >= bundle->primary_block.lifetime) {
+      DEBUG("bundle: Bundle is expired with current age: %lu and lifetime : %lu.\n", (usecs_from_bundle + (xtimer_now().ticks32 - bundle->local_creation_time))
+                                                                                    , bundle->primary_block.lifetime);
       return true;
     }
     else {
