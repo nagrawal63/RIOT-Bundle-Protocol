@@ -524,7 +524,7 @@ static void *_event_loop(void *args)
 static void testing_callback (void *args) {
   if (strtoul(get_src_num(), NULL, 10) == 1) {
     printf("convergence_layer: Sending test packet.\n");
-    send_bundle("test", 4, 4, 1234, iface, "1", NOCRC, DUMMY_PAYLOAD_LIFETIME);
+    send_bundle("test", 4, "4", "1234", iface, "1", NOCRC, DUMMY_PAYLOAD_LIFETIME);
   }
   xtimer_set(args, xtimer_ticks_from_usec(TESTING_SECONDS).ticks32);
 }
