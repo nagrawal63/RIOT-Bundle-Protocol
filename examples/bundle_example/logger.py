@@ -16,6 +16,7 @@ with csv_file :
         read_bytes = ser.readline()
         try :
             ser_bytes = read_bytes.decode("utf-8")
+            print(ser_bytes)
             if "#*#*" in ser_bytes:
                 arr = ser_bytes.split(",")
                 print(arr)
