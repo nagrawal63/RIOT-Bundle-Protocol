@@ -56,10 +56,15 @@ void received_ack(struct neighbor_t *src_neighbor, uint32_t creation_timestamp0,
 	DEBUG("routing_epidemic: Inside processing received acknowledgement.\n");
 	struct actual_bundle *bundle = get_bundle_from_list(creation_timestamp0, creation_timestamp1, src_num);
 	if (bundle == NULL) {
-		DEBUG("bp: could not find bundle in storage corresponding to which ack received.\n");
+		DEBUG("routing_epidemic: could not find bundle in storage corresponding to which ack received.\n");
 		return ;
 	}
-
+	if (src_neighbor->endpoint_num == bundle->primary_block.dst_num) {
+		DEBUG("routing_epidemic: Received ack from final destination, deleting bundle .\n");
+		set_retention_constraint(bundle, NO_RETENTION_CONSTRAINT);
+		delete_bundle(bundle);
+		return ;
+	}
 	struct delivered_bundle_list *list_item = malloc(sizeof(struct delivered_bundle_list));
 	list_item->bundle = bundle;
 	list_item->neighbor = src_neighbor;
