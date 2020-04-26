@@ -228,11 +228,11 @@ static void _receive(gnrc_pktsnip_t *pkt)
       struct neighbor_t *previous_neighbor = get_neighbor_from_l2addr(src_addr);
 
       strncpy((char*)src_addr, (char*)temp_addr, src_addr_len);
-      
       /*
         Storing this information so that it can be used as previuos node information while retransmitting
       */
       bundle->previous_endpoint_num = previous_neighbor->endpoint_num;
+      DEBUG("convergence_layer: Received data from %d.\n", bundle->previous_endpoint_num);
 
       /*Sending acknowledgement for received bundle*/
       send_non_bundle_ack(bundle, pkt);
