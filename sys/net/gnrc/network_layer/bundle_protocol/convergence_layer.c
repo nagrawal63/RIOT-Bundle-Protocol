@@ -13,7 +13,7 @@
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/gnrc/bundle_protocol/routing.h"
 
-#define ENABLE_DEBUG    (1)
+#define ENABLE_DEBUG    (0)
 #include "debug.h"
 
 #include "od.h"
@@ -123,7 +123,7 @@ int process_bundle_before_forwarding(struct actual_bundle *bundle) {
 
 bool is_packet_ack(gnrc_pktsnip_t *pkt) {
   char temp[ACK_IDENTIFIER_SIZE];
-  od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
+  // od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
   strncpy(temp, pkt->data, ACK_IDENTIFIER_SIZE);
   if (strstr(temp, "ack") != NULL) {
     return true;
@@ -223,7 +223,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
 
       DEBUG("convergence_layer: Not a discovery packet with destination: %lu, source: %lu and current address: %lu !!!!!!!!!!!!!!!!!!\n", bundle->primary_block.dst_num, bundle->primary_block.src_num, (uint32_t)atoi(get_src_num()));
       DEBUG("convergence_layer: ***********Data in bundle.****************\n");
-      od_hex_dump(bundle_get_payload_block(bundle)->block_data, bundle_get_payload_block(bundle)->data_len, OD_WIDTH_DEFAULT);
+      // od_hex_dump(bundle_get_payload_block(bundle)->block_data, bundle_get_payload_block(bundle)->data_len, OD_WIDTH_DEFAULT);
 
       uint8_t *temp_addr;
       int src_addr_len;
@@ -553,7 +553,7 @@ static void net_stats_callback(void *args) {
 }
 
 static void retransmit_timer_callback(void *args) {
-  printf("convergence_layer: Inside retransmit timer callback.\n");
+  // printf("convergence_layer: Inside retransmit timer callback.\n");
   (void) args;
   struct bundle_list *bundle_storage_list = get_bundle_list(), *temp;
   uint8_t active_bundles = get_current_active_bundles(), i = 0;

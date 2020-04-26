@@ -34,12 +34,12 @@
 #define MAIN_QUEUE_SIZE     (8)
 static msg_t _main_msg_queue[MAIN_QUEUE_SIZE];
 
-extern int bundle_cmd(int argc, char **argv);
+// extern int bundle_cmd(int argc, char **argv);
 
-static const shell_command_t shell_commands[] = {
-    { "bundle", "send data over bundle_server and listen on bundle_server ports", bundle_cmd },
-    { NULL, NULL, NULL }
-};
+// static const shell_command_t shell_commands[] = {
+//     { "bundle", "send data over bundle_server and listen on bundle_server ports", bundle_cmd },
+//     { NULL, NULL, NULL }
+// };
 
 int main(void)
 {
@@ -54,9 +54,9 @@ int main(void)
     register_application(1234, thread_getpid());
 
     /* start shell */
-    puts("All up, running the shell now");
-    char line_buf[SHELL_DEFAULT_BUFSIZE];
-    shell_run(shell_commands, line_buf, SHELL_DEFAULT_BUFSIZE);
+    // puts("All up, running the shell now");
+    // char line_buf[SHELL_DEFAULT_BUFSIZE];
+    // shell_run(shell_commands, line_buf, SHELL_DEFAULT_BUFSIZE);
 
     // uint8_t data[4] = "test";
     // char dst[2] = "41";
