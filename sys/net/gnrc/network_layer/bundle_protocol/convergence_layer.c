@@ -125,7 +125,6 @@ bool is_packet_ack(gnrc_pktsnip_t *pkt) {
   char temp[ACK_IDENTIFIER_SIZE];
   od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
   strncpy(temp, pkt->data, ACK_IDENTIFIER_SIZE);
-  printf("convergence_layer: string in is_packet_ack: %s.\n", temp);
   if (strstr(temp, "ack") != NULL) {
     return true;
   }
@@ -598,6 +597,8 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
 
     bundle_store_list = get_bundle_list();
     temp_bundle = bundle_store_list;
+    DEBUG("contact_manager: Will send these bundles from storage to the new neighbor with eid: %lu.\n", neighbor->endpoint_num);
+    print_bundle_storage();
     while(temp_bundle != NULL && i < active_bundles) {
       if(temp_bundle->current_bundle.primary_block.dst_num != (uint32_t)atoi(BROADCAST_EID)) {
 
@@ -610,7 +611,7 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
             continue;
           } 
         }
-
+        DEBUG("contact_manager: Will send bundle with id %lu to this new neighbor.\n", temp_bundle->unique_id);
         gnrc_netif_t *netif = NULL;
         nanocbor_encoder_t enc;
         uint32_t original_bundle_age = 0;
