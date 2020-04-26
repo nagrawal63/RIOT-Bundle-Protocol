@@ -40,6 +40,7 @@ struct actual_bundle* get_space_for_bundle(void)
   int i = 0;
   while(temp != NULL && i < active_bundles) {
     if (is_expired_bundle(&temp->current_bundle)) {
+      set_retention_constraint(NO_RETENTION_CONSTRAINT);
       delete_bundle(&temp->current_bundle);
     }
     temp = temp->next;
