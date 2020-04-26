@@ -122,6 +122,7 @@ int process_bundle_before_forwarding(struct actual_bundle *bundle) {
 
 bool is_packet_ack(gnrc_pktsnip_t *pkt) {
   char temp[ACK_IDENTIFIER_SIZE];
+  od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
   strncpy(temp, pkt->data, ACK_IDENTIFIER_SIZE);
   if (strcmp(temp, "ack") == 0) {
     return true;
