@@ -1,3 +1,14 @@
+/**
+ * @ingroup     Bundle protocol
+ * @{
+ *
+ * @file
+ * @brief       Bundle protocol agent header
+ *
+ * @author      Nishchay Agrawal <agrawal.nishchay5@gmail.com>
+ *
+ * @}
+ */
 #ifndef _BUNDLE_PROTOCOL_AGENT
 #define _BUNDLE_PROTOCOL_AGENT
 
@@ -43,7 +54,7 @@ struct statistics {
 };
 
 void bundle_protocol_init(kernel_pid_t pid);
-void send_bundle(uint8_t *payload_data, size_t data_len, char *dst, char *service_num, int iface, char *report_num, uint8_t crctype, uint32_t lifetime);
+void send_bundle(uint8_t *payload_data, size_t data_len, char *ipn_dst, char *report_num, uint8_t crctype, uint32_t lifetime);
 bool register_application(uint32_t service_num, kernel_pid_t pid);
 bool set_registration_state(uint32_t service_num, uint8_t state);
 uint8_t get_registration_status(uint32_t service_num);

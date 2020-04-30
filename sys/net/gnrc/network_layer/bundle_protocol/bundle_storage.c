@@ -1,3 +1,14 @@
+/**
+ * @ingroup     Bundle protocol
+ * @{
+ *
+ * @file
+ * @brief       Bundle Storage implementation
+ *
+ * @author      Nishchay Agrawal <agrawal.nishchay5@gmail.com>
+ *
+ * @}
+ */
 #include "random.h"
 #include "utlist.h"
 
@@ -41,7 +52,7 @@ struct actual_bundle* get_space_for_bundle(void)
   while(temp != NULL && i < active_bundles) {
     if (is_expired_bundle(&temp->current_bundle)) {
       set_retention_constraint(&temp->current_bundle, NO_RETENTION_CONSTRAINT);
-      get_router()->notify_bundle_deletion(&temp->current_bundle);
+      // get_router()->notify_bundle_deletion(&temp->current_bundle);
       delete_bundle(&temp->current_bundle);
     }
     temp = temp->next;
@@ -53,7 +64,7 @@ struct actual_bundle* get_space_for_bundle(void)
     struct bundle_list *oldest_bundle = find_oldest_bundle_to_purge();
     if(delete_bundle(&oldest_bundle->current_bundle)) {
       DEBUG("bundle_storage: deleted oldest bundle .\n");
-      get_router()->notify_bundle_deletion(&oldest_bundle->current_bundle);
+      // get_router()->notify_bundle_deletion(&oldest_bundle->current_bundle);
       return get_space_for_bundle();
     }
     return NULL;

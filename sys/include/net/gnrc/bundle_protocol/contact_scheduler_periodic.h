@@ -1,3 +1,14 @@
+/**
+ * @ingroup     Bundle protocol
+ * @{
+ *
+ * @file
+ * @brief       Periodic discovery packet scheduler header
+ *
+ * @author      Nishchay Agrawal <agrawal.nishchay5@gmail.com>
+ *
+ * @}
+ */
 #ifndef _CONTACT_SCHEDULER_PERIODIC_H
 #define _CONTACT_SCHEDULER_PERIODIC_H
 
@@ -10,6 +21,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+extern int iface;		
 
 /**
  * @brief   Default priority for the _CONTACT_MANAGER_BP thread.

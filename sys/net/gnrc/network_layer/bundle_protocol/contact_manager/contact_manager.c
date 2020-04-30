@@ -1,3 +1,14 @@
+/**
+ * @ingroup     Bundle protocol
+ * @{
+ *
+ * @file
+ * @brief       Discovery manager for bundle protocol
+ *
+ * @author      Nishchay Agrawal <agrawal.nishchay5@gmail.com>
+ *
+ * @}
+ */
 #include "thread.h"
 #include "kernel_types.h"
 #include "utlist.h"

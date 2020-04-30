@@ -1,3 +1,14 @@
+/**
+ * @ingroup     Bundle protocol
+ * @{
+ *
+ * @file
+ * @brief       Periodic scheduler for discovery management in bundle protocol
+ *
+ * @author      Nishchay Agrawal <agrawal.nishchay5@gmail.com>
+ *
+ * @}
+ */
 #include "thread.h"
 #include "kernel_types.h"
 #include "xtimer.h"
@@ -5,6 +16,7 @@
 #include "net/gnrc/bundle_protocol/contact_scheduler_periodic.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
+#include "net/gnrc/bundle_protocol/agent.h"
 #include "net/gnrc/pkt.h"
 #include "net/gnrc/netif/internal.h"
 #include "net/gnrc.h"
@@ -23,7 +35,7 @@ static char _stack[GNRC_CONTACT_MANAGER_STACK_SIZE];
 #endif
 
 static kernel_pid_t _pid = KERNEL_PID_UNDEF;
-static int iface = 9;
+// int iface = 0;
 
 static void *contact_scheduler(void * args);
 static uint8_t *_encode_discovery_bundle(struct actual_bundle *bundle, size_t *required_size);
@@ -56,6 +68,7 @@ static uint8_t *_encode_discovery_bundle(struct actual_bundle *bundle, size_t *r
 
 int send(int data)
 {
+  DEBUG("contact_scheduler_periodic: Will send discovery packet to interface : %d.\n", iface);
   (void)data;
   gnrc_pktsnip_t *discovery_packet;
   gnrc_netif_t *netif = NULL;
@@ -79,7 +92,7 @@ int send(int data)
     DEBUG("contact_scheduler: Could not obtain space for bundle.\n");
     return ERROR;
   }
-  fill_bundle(bundle, 7, IPN, BROADCAST_EID, NULL, 1, NOCRC, CONTACT_MANAGER_SERVICE_NUM, iface);
+  fill_bundle(bundle, 7, IPN, BROADCAST_EID, NULL, 1, NOCRC, CONTACT_MANAGER_SERVICE_NUM);
   bundle_add_block(bundle, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);
   // print_bundle(bundle);
 

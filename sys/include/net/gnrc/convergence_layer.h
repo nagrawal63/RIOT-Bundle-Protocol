@@ -1,4 +1,14 @@
-
+/**
+ * @ingroup     Bundle protocol
+ * @{
+ *
+ * @file
+ * @brief       Convergence layer header
+ *
+ * @author      Nishchay Agrawal <agrawal.nishchay5@gmail.com>
+ *
+ * @}
+ */
 #ifndef NET_GNRC_BP_H
 #define NET_GNRC_BP_H
 

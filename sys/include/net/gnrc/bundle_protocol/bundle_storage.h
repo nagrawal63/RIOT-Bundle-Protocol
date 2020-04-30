@@ -1,3 +1,14 @@
+/**
+ * @ingroup     Bundle protocol
+ * @{
+ *
+ * @file
+ * @brief       Bundle storage implementation for bundle protocol
+ *
+ * @author      Nishchay Agrawal <agrawal.nishchay5@gmail.com>
+ *
+ * @}
+ */
 #ifndef _BUNDLE_STORAGE_BP_H
 #define _BUNDLE_STORAGE_BP_H
 

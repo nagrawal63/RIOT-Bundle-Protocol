@@ -1,3 +1,14 @@
+/**
+ * @ingroup     Bundle protocol
+ * @{
+ *
+ * @file
+ * @brief       Bundle protocol agent 
+ *
+ * @author      Nishchay Agrawal <agrawal.nishchay5@gmail.com>
+ *
+ * @}
+ */
 #include "utlist.h"
 
 // #include "net/gnrc.h"
@@ -46,10 +57,25 @@ void bundle_protocol_init(kernel_pid_t pid) {
 	network_stats.discovery_bundle_receive = 0;
 }
 
-void send_bundle(uint8_t *payload_data, size_t data_len, char *dst, char *service_num, int iface, char *report_num, uint8_t crctype, uint32_t lifetime) 
+void send_bundle(uint8_t *payload_data, size_t data_len, char *ipn_dst, char *report_num, uint8_t crctype, uint32_t lifetime) 
 {
 	// (void) data;
-	(void) iface;
+	// (void) iface;
+	char *dst, *service_num;
+
+	char temp[IPN_IDENTIFIER_SIZE];
+	
+	strncpy(temp, ipn_dst, IPN_IDENTIFIER_SIZE);
+	if (strstr(temp, "ipn://") != NULL) {
+		char *ptr = ipn_dst + IPN_IDENTIFIER_SIZE;
+		dst = strtok(ptr, ".");
+		service_num = strtok(NULL, ".");
+		DEBUG("agent: dst: %s, service_num: %s.\n", dst, service_num);
+	}
+	else {
+		DEBUG("agent: Provide ipn endpoint id.\n");
+		return ;
+	}
 
 	uint64_t payload_flag;
 
@@ -70,7 +96,7 @@ void send_bundle(uint8_t *payload_data, size_t data_len, char *dst, char *servic
 	return;
 	}
 
-	int res = fill_bundle(bundle, 7, IPN, dst, report_num, lifetime, crctype, service_num, iface);
+	int res = fill_bundle(bundle, 7, IPN, dst, report_num, lifetime, crctype, service_num);
 	if (res < 0) {
 		DEBUG("agent: Invalid bundle.\n");
 		delete_bundle(bundle);

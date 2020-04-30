@@ -1,4 +1,14 @@
-
+/**
+ * @ingroup     Bundle protocol
+ * @{
+ *
+ * @file
+ * @brief       Primitive convergence layer for bundle protocol
+ *
+ * @author      Nishchay Agrawal <agrawal.nishchay5@gmail.com>
+ *
+ * @}
+ */
 #include <math.h>
 #include "kernel_types.h"
 #include "thread.h"
@@ -20,7 +30,6 @@
 
 static kernel_pid_t _pid = KERNEL_PID_UNDEF;
 
-//Hardcoded right now, find a way to change this soon
 int iface = 0;
 
 
@@ -35,7 +44,7 @@ static void _send(struct actual_bundle *bundle);
 static void _send_packet(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void *args);
 static void retransmit_timer_callback(void *args);
-static void net_stats_callback(void *args);
+// static void net_stats_callback(void *args);
 // static void testing_callback (void *args);
 static void print_potential_neighbor_list(struct neighbor_t* neighbors);
 static int calculate_size_of_num(uint32_t num);
@@ -183,8 +192,15 @@ static void _receive(gnrc_pktsnip_t *pkt)
       gnrc_pktbuf_release(pkt);
       return ;
     }
-    if (bundle_decode(bundle, pkt->data, pkt->size) == ERROR) {
+    int res = bundle_decode(bundle, pkt->data, pkt->size);
+    if (res == ERROR) {
       DEBUG("convergence_layer: Packet received not for bundle protocol.\n");
+      gnrc_pktbuf_release(pkt);
+      delete_bundle(bundle);
+      return ;
+    }
+    else if (res == BUNDLE_TOO_LARGE_ERROR) {
+      DEBUG("convergence_layer: Bundle too large for bundle protocol.\n");
       gnrc_pktbuf_release(pkt);
       delete_bundle(bundle);
       return ;
@@ -491,15 +507,15 @@ static void *_event_loop(void *args)
   // uint8_t num_of_iface = gnrc_netif_numof();
   // DEBUG("convergence_layer: num of ifaces: %u.\n", num_of_iface);
 
-  xtimer_t *net_stats_timer = malloc(sizeof(xtimer_t));
-  net_stats_timer->callback = &net_stats_callback;
-  net_stats_timer->arg = net_stats_timer;
-  xtimer_set(net_stats_timer, xtimer_ticks_from_usec(NET_STATS_SECONDS).ticks32);
+  // xtimer_t *net_stats_timer = malloc(sizeof(xtimer_t));
+  // net_stats_timer->callback = &net_stats_callback;
+  // net_stats_timer->arg = net_stats_timer;
+  // xtimer_set(net_stats_timer, xtimer_ticks_from_usec(NET_STATS_SECONDS).ticks32);
 
-  xtimer_t *testing_timer = malloc(sizeof(xtimer_t));
-  msg_t testing_msg;
-  testing_msg.type = GNRC_NETAPI_MSG_TYPE_GET;
-  xtimer_set_msg(testing_timer, TESTING_SECONDS, &testing_msg, thread_getpid());
+  // xtimer_t *testing_timer = malloc(sizeof(xtimer_t));
+  // msg_t testing_msg;
+  // testing_msg.type = GNRC_NETAPI_MSG_TYPE_GET;
+  // xtimer_set_msg(testing_timer, TESTING_SECONDS, &testing_msg, thread_getpid());
 
   while(1){
     DEBUG("convergence_layer: waiting for incoming message.\n");
@@ -518,16 +534,17 @@ static void *_event_loop(void *args)
           _receive(msg.content.ptr);
           break;
       case GNRC_NETAPI_MSG_TYPE_GET:
+        /*Only for testing purposes*/
           if (strtoul(get_src_num(), NULL, 10) == 1) {
             DEBUG("convergence_layer: message received for testing bundle send.\n");
             uint8_t *data = (uint8_t*) malloc(4*sizeof(char));
-            char* dst = (char*)malloc(sizeof(char)), *service = (char*) malloc(4*sizeof(char)), *report = (char*) malloc(sizeof(char));
+            char* dst = (char*)malloc(sizeof(char)), *report = (char*) malloc(sizeof(char));
             data = (uint8_t*) "test";
-            dst = "4";
-            service = "1234";
+            dst = "ipn://4.1234";
+            // service = "1234";
             report = "1";
-            send_bundle(data, 4, dst, service, iface, report, NOCRC, DUMMY_PAYLOAD_LIFETIME);
-            xtimer_set_msg(testing_timer, TESTING_SECONDS, &testing_msg, thread_getpid());
+            send_bundle(data, 4, dst, report, NOCRC, DUMMY_PAYLOAD_LIFETIME);
+            // xtimer_set_msg(testing_timer, TESTING_SECONDS, &testing_msg, thread_getpid());
           }
           break;
       default:
@@ -547,10 +564,10 @@ static void *_event_loop(void *args)
 //   xtimer_set(args, xtimer_ticks_from_usec(TESTING_SECONDS).ticks32);
 // }
 
-static void net_stats_callback(void *args) {
-  print_network_statistics();
-  xtimer_set(args, xtimer_ticks_from_usec(NET_STATS_SECONDS).ticks32);
-}
+// static void net_stats_callback(void *args) {
+//   print_network_statistics();
+//   xtimer_set(args, xtimer_ticks_from_usec(NET_STATS_SECONDS).ticks32);
+// }
 
 static void retransmit_timer_callback(void *args) {
   printf("convergence_layer: Inside retransmit timer callback.\n");
@@ -739,7 +756,7 @@ void send_ack(struct actual_bundle *bundle) {
   sprintf(buf_report, "%lu", bundle->primary_block.report_num);
   sprintf(buf_service, "%lu", bundle->primary_block.service_num);
   ack_bundle = create_bundle();
-  fill_bundle(ack_bundle, 7, IPN, buf_dst, buf_report, lifetime, bundle->primary_block.crc_type, buf_service, iface);
+  fill_bundle(ack_bundle, 7, IPN, buf_dst, buf_report, lifetime, bundle->primary_block.crc_type, buf_service);
   bundle_add_block(ack_bundle, BUNDLE_BLOCK_TYPE_PAYLOAD, payload_flag, payload_data, NOCRC, data_len);
 
   if(!gnrc_bp_dispatch(GNRC_NETTYPE_BP, GNRC_NETREG_DEMUX_CTX_ALL, ack_bundle, GNRC_NETAPI_MSG_TYPE_SND)) {

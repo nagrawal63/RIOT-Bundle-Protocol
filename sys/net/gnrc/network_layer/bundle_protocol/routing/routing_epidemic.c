@@ -1,3 +1,14 @@
+/**
+ * @ingroup     Bundle protocol
+ * @{
+ *
+ * @file
+ * @brief       Epidemic routing for bundle protocol
+ *
+ * @author      Nishchay Agrawal <agrawal.nishchay5@gmail.com>
+ *
+ * @}
+ */
 #ifndef _ROUTING_EPIDEMIC
 #define _ROUTING_EPIDEMIC
 #include "kernel_types.h"

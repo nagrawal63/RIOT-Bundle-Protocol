@@ -1,3 +1,15 @@
+/**
+ * @ingroup     Bundle protocol
+ * @{
+ *
+ * @file
+ * @brief       Bundle implementation
+ *
+ * @author      Nishchay Agrawal <agrawal.nishchay5@gmail.com>
+ *
+ * @}
+ */
+
 #ifndef _BUNDLE_BP_H
 #define _BUNDLE_BP_H
 
@@ -13,12 +25,13 @@
 #include "xtimer.h"
 
 #define DUMMY_EID "test"
-#define DUMMY_SRC_NUM "02"
+#define DUMMY_SRC_NUM "01"
 #define BROADCAST_EID "11111111"
 #define INVALID_EID  0xFFFFFFFF 
 
 #define CONTACT_MANAGER_SERVICE_NUM "12"
 
+#define BUNDLE_TOO_LARGE_ERROR -2
 #define ERROR -1
 #define OK 1
 
@@ -53,6 +66,8 @@
 #define MAX_ACK_SIZE 70
 #define DUMMY_PAYLOAD_LIFETIME 100000000
 #define ACK_IDENTIFIER_SIZE 3
+
+#define IPN_IDENTIFIER_SIZE 6
 
 #define MAX_NUM_OF_BLOCKS 3
 #define MAX_ENDPOINT_SIZE 32
@@ -146,7 +161,7 @@ void calculate_primary_flag(uint64_t *flag, bool is_fragment, bool dont_fragment
 int calculate_canonical_flag(uint64_t *flag, bool replicate_block);
 
 struct actual_bundle* create_bundle(void);
-int fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dest_eid, char* report_eid, uint32_t lifetime, int crc_type, char* service_num, int iface);
+int fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dest_eid, char* report_eid, uint32_t lifetime, int crc_type, char* service_num);
 int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc);
 int bundle_decode(struct actual_bundle* bundle, uint8_t *buffer, size_t buf_len);
 int encode_primary_block(struct actual_bundle *bundle, nanocbor_encoder_t *enc);

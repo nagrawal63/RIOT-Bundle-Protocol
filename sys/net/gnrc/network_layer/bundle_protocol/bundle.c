@@ -1,4 +1,14 @@
-
+/**
+ * @ingroup     Bundle protocol
+ * @{
+ *
+ * @file
+ * @brief       Bundle implementation (Implements filling, encoding, decoding of bundle) 
+ *
+ * @author      Nishchay Agrawal <agrawal.nishchay5@gmail.com>
+ *
+ * @}
+ */
 #include "checksum/ucrc16.h"
 #include "checksum/fletcher32.h"
 #include "byteorder.h"
@@ -385,6 +395,9 @@ int bundle_decode(struct actual_bundle* bundle, uint8_t *buffer, size_t buf_len)
     decode_canonical_block_element(&arr, block, CRC_CANONICAL);
     nanocbor_leave_container(&decoder, &arr);
     bundle->num_of_blocks++;
+  }
+  if (*decoder.cur != 0xFF && bundle->num_of_blocks >= MAX_NUM_OF_BLOCKS) {
+    return ERROR;
   }
   return 1;
 }
@@ -915,7 +928,7 @@ struct actual_bundle* create_bundle(void)
 }
 
 
-int fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dst_eid, char* report_eid, uint32_t lifetime, int crc_type, char* service_num, int iface)
+int fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_scheme, char* dst_eid, char* report_eid, uint32_t lifetime, int crc_type, char* service_num)
 {
   if (strcmp(dst_eid, get_src_num()) == 0) {
     DEBUG("bundle: Source and destination address cannot be same.\n");
@@ -1055,7 +1068,7 @@ int fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sche
       break;
     }
   }
-  bundle->iface = iface;
+  // bundle->iface = iface;
   return OK;
 }
 
