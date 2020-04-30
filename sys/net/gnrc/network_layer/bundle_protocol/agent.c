@@ -89,6 +89,10 @@ void send_bundle(uint8_t *payload_data, size_t data_len, char *ipn_dst, char *re
 		return ;
 	}
 
+	if (get_registration_status(strtoul(service_num, NULL, 10)) != REGISTRATION_ACTIVE) {
+		DEBUG("agent: Application registration not active for sending bundle.\n");
+		return ;
+	}
 
 	struct actual_bundle *bundle;
 	if((bundle = create_bundle()) == NULL){

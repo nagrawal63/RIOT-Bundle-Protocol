@@ -52,6 +52,7 @@ int main(void)
     bundle_protocol_init(9);
 
     register_application(1234, thread_getpid());
+    set_registration_state(1234, REGISTRATION_PASSIVE);
 
     /* start shell */
     puts("All up, running the shell now");
