@@ -23,7 +23,7 @@
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/gnrc/bundle_protocol/routing.h"
 
-#define ENABLE_DEBUG    (1)
+#define ENABLE_DEBUG    (0)
 #include "debug.h"
 
 #include "od.h"
@@ -44,10 +44,8 @@ static void _send(struct actual_bundle *bundle);
 static void _send_packet(gnrc_pktsnip_t *pkt);
 static void *_event_loop(void *args);
 static void retransmit_timer_callback(void *args);
-// static void net_stats_callback(void *args);
-// static void testing_callback (void *args);
-static void print_potential_neighbor_list(struct neighbor_t* neighbors);
 static int calculate_size_of_num(uint32_t num);
+static void net_stats_callback(void *args);
 
 kernel_pid_t gnrc_bp_init(void)
 {
@@ -59,7 +57,6 @@ kernel_pid_t gnrc_bp_init(void)
                         THREAD_CREATE_STACKTEST, _event_loop, NULL, "convergence_layer");
 
   DEBUG("convergence_layer: thread created with pid: %d\n",_pid);
-  // bundle_protocol_init(NULL);
   return _pid;
 }
 
@@ -114,14 +111,11 @@ bool check_lifetime_expiry(struct actual_bundle *bundle) {
 }
 
 int process_bundle_before_forwarding(struct actual_bundle *bundle) {
-  DEBUG("convergence_layer: Processing bundle before forwarding.\n");
-  (void) bundle;
 
   /*Processing bundle and updating its bundle age block*/
   struct bundle_canonical_block_t *bundle_age_block = get_block_by_type(bundle, BUNDLE_BLOCK_TYPE_BUNDLE_AGE);
 
   if (bundle_age_block != NULL) {
-    DEBUG("convergence_layer: found bundle age block in bundle.\n");
     if (increment_bundle_age(bundle_age_block, bundle) < 0) {
       DEBUG("convergence_layer: Error updating bundle age block.\n");
       return ERROR;
@@ -132,7 +126,6 @@ int process_bundle_before_forwarding(struct actual_bundle *bundle) {
 
 bool is_packet_ack(gnrc_pktsnip_t *pkt) {
   char temp[ACK_IDENTIFIER_SIZE];
-  // od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
   strncpy(temp, pkt->data, ACK_IDENTIFIER_SIZE);
   if (strstr(temp, "ack") != NULL) {
     return true;
@@ -153,9 +146,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
   }
 
   if (is_packet_ack(pkt)) {
-    DEBUG("convergence_layer: ack received.\n");
     update_statistics(ACK_RECEIVE);
-    // (void) cur_router;
     uint8_t *temp_addr;
     int src_addr_len;
     char *creation_timestamp0, *creation_timestamp1;
@@ -164,7 +155,6 @@ static void _receive(gnrc_pktsnip_t *pkt)
     src_addr_len = gnrc_netif_hdr_get_srcaddr(pkt, &temp_addr);
     uint8_t src_addr[src_addr_len];
     strncpy((char*)src_addr, (char*)temp_addr, src_addr_len);
-    // DEBUG("convergence_layer: src addr from netif hdr %s.\n", src_addr);
 
     struct neighbor_t *neighbor = get_neighbor_from_l2addr(src_addr);
 
@@ -173,7 +163,6 @@ static void _receive(gnrc_pktsnip_t *pkt)
       return ;
     }
 
-    DEBUG("convergence_layer: ack received from neighbor with endpoint num: %lu and l2addr %s.\n", neighbor->endpoint_num, neighbor->l2addr);
     strtok(pkt->data, "_");
     creation_timestamp0 = strtok(NULL, "_");
     creation_timestamp1 = strtok(NULL, "_");
@@ -237,10 +226,6 @@ static void _receive(gnrc_pktsnip_t *pkt)
 #endif
     else {
 
-      DEBUG("convergence_layer: Not a discovery packet with destination: %lu, source: %lu and current address: %lu !!!!!!!!!!!!!!!!!!\n", bundle->primary_block.dst_num, bundle->primary_block.src_num, (uint32_t)atoi(get_src_num()));
-      DEBUG("convergence_layer: ***********Data in bundle.****************\n");
-      od_hex_dump(bundle_get_payload_block(bundle)->block_data, bundle_get_payload_block(bundle)->data_len, OD_WIDTH_DEFAULT);
-
       uint8_t *temp_addr;
       int src_addr_len;
       src_addr_len = gnrc_netif_hdr_get_srcaddr(pkt, &temp_addr);
@@ -259,7 +244,6 @@ static void _receive(gnrc_pktsnip_t *pkt)
         */
         bundle->previous_endpoint_num = previous_neighbor->endpoint_num;
       }
-      DEBUG("convergence_layer: Received data from %lu and actual variable is %lu.\n", bundle->previous_endpoint_num, previous_neighbor->endpoint_num);
 
       /*Sending acknowledgement for received bundle*/
       send_non_bundle_ack(bundle, pkt);
@@ -296,7 +280,6 @@ static void _receive(gnrc_pktsnip_t *pkt)
         set_retention_constraint(bundle, FORWARD_PENDING_RETENTION_CONSTRAINT);
 
         netif = gnrc_netif_get_by_pid(iface);
-        DEBUG("convergence_layer: Sending bundle to hardcoded interface %d.\n", iface);
 
         struct neighbor_t *neighbors_to_send = cur_router->route_receivers(bundle->primary_block.dst_num);
         if (neighbors_to_send == NULL) {
@@ -307,18 +290,12 @@ static void _receive(gnrc_pktsnip_t *pkt)
         if(process_bundle_before_forwarding(bundle) < 0) {
           return ;
         }
-        DEBUG("convergence_layer: Encoding bundle to be forwarded with service_num: %lu.\n", bundle->primary_block.service_num);
         nanocbor_encoder_init(&enc, NULL, 0);
         bundle_encode(bundle, &enc);
         size_t required_size = nanocbor_encoded_len(&enc);
         uint8_t *buf = malloc(required_size);
         nanocbor_encoder_init(&enc, buf, required_size);
         bundle_encode(bundle, &enc);
-        DEBUG("convergence_layer: Encoded bundle while forwarding: ");
-        for(int i=0;i<(int)required_size;i++){
-          DEBUG("%02x",buf[i]);
-        }
-        DEBUG(" at %p\n", bundle);
 
         gnrc_pktsnip_t *forward_pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
         if (forward_pkt == NULL) {
@@ -332,20 +309,15 @@ static void _receive(gnrc_pktsnip_t *pkt)
           Handling not sending to previous node here since the solution would require more malloc
           and space is problem on these low power nodes
         */
-        // TODO: Add checking from ack list since it is possible we receive the same bundle and it might be sent again
-        //       to other nodes
         LL_FOREACH(neighbors_to_send, temp) {
           if (temp->endpoint_scheme == IPN && temp->endpoint_num != bundle->previous_endpoint_num && memcmp(temp->l2addr, previous_neighbor->l2addr, temp->l2addr_len) != 0) {
-            DEBUG("convergence_layer:Forwarding packet to neighbor with eid %lu.\n", temp->endpoint_num);
             sent = true;
             if (netif != NULL) {
               gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
-              // DEBUG("convergence_layer: netif hdr data is %s.\n",(char *)netif_hdr->data);
               gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
               LL_PREPEND(forward_pkt, netif_hdr);
             }
             if (netif->pid != 0) {
-              DEBUG("convergence_layer: Forwarding packet to process with pid %d.\n", netif->pid);
               gnrc_netapi_send(netif->pid, forward_pkt);
             }
           }
@@ -363,7 +335,6 @@ static void _receive(gnrc_pktsnip_t *pkt)
 
 static void _send(struct actual_bundle *bundle)
 {
-  DEBUG("convergence_layer: _send function with iface = %d.\n", iface);
   uint8_t registration_status = get_registration_status(bundle->primary_block.service_num);
   if (registration_status == REGISTRATION_ACTIVE) {
     set_retention_constraint(bundle, DISPATCH_PENDING_RETENTION_CONSTRAINT);
@@ -379,8 +350,6 @@ static void _send(struct actual_bundle *bundle)
     netif = gnrc_netif_get_by_pid(iface);
 
     neighbor_list_to_send = cur_router->route_receivers(bundle->primary_block.dst_num);
-    DEBUG("convergence_layer: Printing potential neighbor list: \n");
-    print_potential_neighbor_list(neighbor_list_to_send);
     if (neighbor_list_to_send == NULL) {
       DEBUG("convergence_layer: Could not find neighbors to send bundle to.\n");
       return ;
@@ -396,18 +365,12 @@ static void _send(struct actual_bundle *bundle)
         return;
       }
     }
-    DEBUG("convergence_layer: Encoding bundle with service_num: %lu.\n", bundle->primary_block.service_num);
     nanocbor_encoder_init(&enc, NULL, 0);
     bundle_encode(bundle, &enc);
     size_t required_size = nanocbor_encoded_len(&enc);
     uint8_t *buf = malloc(required_size);
     nanocbor_encoder_init(&enc, buf, required_size);
     bundle_encode(bundle, &enc);
-    DEBUG("convergence_layer: Encoded bundle: ");
-    for(int i=0;i<(int)required_size;i++){
-      DEBUG("%02x",buf[i]);
-    }
-    DEBUG(" at %p\n", bundle);
 
     gnrc_pktsnip_t *pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
     if (pkt == NULL) {
@@ -424,11 +387,8 @@ static void _send(struct actual_bundle *bundle)
         Sending bundle for the first time from this node
       */
       if (ack_list == NULL && temp->endpoint_scheme == IPN && temp->endpoint_num != bundle->previous_endpoint_num) {
-        DEBUG("convergence_layer: Sending bundle to neighbor since ack list is null.\n");
-        DEBUG("convergence_layer:Sending packet to neighbor with eid %lu.\n", temp->endpoint_num);
         if (netif != NULL) {
           gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
-          // DEBUG("convergence_layer: netif hdr data is %s.\n",(char *)netif_hdr->data);
           gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
           LL_PREPEND(pkt, netif_hdr);
         }
@@ -447,7 +407,6 @@ static void _send(struct actual_bundle *bundle)
           }
         }
         if (!found && temp->endpoint_scheme == IPN && temp->endpoint_num != bundle->previous_endpoint_num) {
-          DEBUG("convergence_layer:Sending packet with src eid : %lu to neighbor with eid %lu.\n", bundle->primary_block.src_num, temp->endpoint_num);
           if (netif != NULL) {
             gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp->l2addr, temp->l2addr_len);
             gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
@@ -504,18 +463,10 @@ static void *_event_loop(void *args)
   timer->arg = timer;
   xtimer_set(timer, xtimer_ticks_from_usec(RETRANSMIT_TIMER_SECONDS).ticks32);
 
-  // uint8_t num_of_iface = gnrc_netif_numof();
-  // DEBUG("convergence_layer: num of ifaces: %u.\n", num_of_iface);
-
-  // xtimer_t *net_stats_timer = malloc(sizeof(xtimer_t));
-  // net_stats_timer->callback = &net_stats_callback;
-  // net_stats_timer->arg = net_stats_timer;
-  // xtimer_set(net_stats_timer, xtimer_ticks_from_usec(NET_STATS_SECONDS).ticks32);
-
-  // xtimer_t *testing_timer = malloc(sizeof(xtimer_t));
-  // msg_t testing_msg;
-  // testing_msg.type = GNRC_NETAPI_MSG_TYPE_GET;
-  // xtimer_set_msg(testing_timer, TESTING_SECONDS, &testing_msg, thread_getpid());
+  xtimer_t *net_stats_timer = malloc(sizeof(xtimer_t));
+  net_stats_timer->callback = &net_stats_callback;
+  net_stats_timer->arg = net_stats_timer;
+  xtimer_set(net_stats_timer, xtimer_ticks_from_usec(NET_STATS_SECONDS).ticks32);
 
   while(1){
     DEBUG("convergence_layer: waiting for incoming message.\n");
@@ -533,20 +484,6 @@ static void *_event_loop(void *args)
           DEBUG("convergence_layer: GNRC_NETDEV_MSG_TYPE_RCV received\n");
           _receive(msg.content.ptr);
           break;
-      case GNRC_NETAPI_MSG_TYPE_GET:
-        /*Only for testing purposes*/
-          if (strtoul(get_src_num(), NULL, 10) == 1) {
-            DEBUG("convergence_layer: message received for testing bundle send.\n");
-            uint8_t *data = (uint8_t*) malloc(4*sizeof(char));
-            char* dst = (char*)malloc(sizeof(char)), *report = (char*) malloc(sizeof(char));
-            data = (uint8_t*) "test";
-            dst = "ipn://4.1234";
-            // service = "1234";
-            report = "1";
-            send_bundle(data, 4, dst, report, NOCRC, DUMMY_PAYLOAD_LIFETIME);
-            // xtimer_set_msg(testing_timer, TESTING_SECONDS, &testing_msg, thread_getpid());
-          }
-          break;
       default:
         DEBUG("convergence_layer: Successfully entered bp, yayyyyyy!!\n");
         break;
@@ -555,23 +492,13 @@ static void *_event_loop(void *args)
   return NULL;
 }
 
-// static void testing_callback (void *args) {
-//   if (strtoul(get_src_num(), NULL, 10) == 1) {
 
-//     printf("convergence_layer: Sending test packet.\n");
-    
-//   }
-//   xtimer_set(args, xtimer_ticks_from_usec(TESTING_SECONDS).ticks32);
-// }
-
-// static void net_stats_callback(void *args) {
-//   print_network_statistics();
-//   xtimer_set(args, xtimer_ticks_from_usec(NET_STATS_SECONDS).ticks32);
-// }
+static void net_stats_callback(void *args) {
+  print_network_statistics();
+  xtimer_set(args, xtimer_ticks_from_usec(NET_STATS_SECONDS).ticks32);
+}
 
 static void retransmit_timer_callback(void *args) {
-  printf("convergence_layer: Inside retransmit timer callback.\n");
-  (void) args;
   struct bundle_list *bundle_storage_list = get_bundle_list(), *temp;
   uint8_t active_bundles = get_current_active_bundles(), i = 0;
   temp = bundle_storage_list;
@@ -596,17 +523,6 @@ static void retransmit_timer_callback(void *args) {
   xtimer_set(args, xtimer_ticks_from_usec(RETRANSMIT_TIMER_SECONDS).ticks32);
 }
 
-static void print_potential_neighbor_list(struct neighbor_t* neighbors) {
-  char addr_str[GNRC_NETIF_HDR_L2ADDR_PRINT_LEN];
-  struct neighbor_t *temp;
-  DEBUG("convergence_layer: Printing neighbor list: ");
-  LL_FOREACH(neighbors, temp) {
-    DEBUG("(%lu, %s )-> ", temp->endpoint_num, gnrc_netif_addr_to_str(temp->l2addr, temp->l2addr_len, addr_str));
-  }
-  DEBUG(".\n");
-}
-
-//TODO : Add check if the bundle has already been sent to this neighbor
 void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
     struct bundle_list *bundle_store_list, *temp_bundle;
     struct delivered_bundle_list *ack_list, *temp_ack_list;
@@ -616,8 +532,6 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
 
     bundle_store_list = get_bundle_list();
     temp_bundle = bundle_store_list;
-    DEBUG("contact_manager: Will send these bundles from storage to the new neighbor with eid: %lu.\n", neighbor->endpoint_num);
-    print_bundle_storage();
     while(temp_bundle != NULL && i < active_bundles) {
       if(temp_bundle->current_bundle.primary_block.dst_num != (uint32_t)atoi(BROADCAST_EID)) {
 
@@ -630,7 +544,6 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
             continue;
           } 
         }
-        DEBUG("contact_manager: Will send bundle with id %lu to this new neighbor.\n", temp_bundle->unique_id);
         gnrc_netif_t *netif = NULL;
         nanocbor_encoder_t enc;
         uint32_t original_bundle_age = 0;
@@ -650,19 +563,12 @@ void send_bundles_to_new_neighbor(struct neighbor_t *neighbor) {
           }
         }
 
-        print_bundle(&temp_bundle->current_bundle);
-
         nanocbor_encoder_init(&enc, NULL, 0);
         bundle_encode(&temp_bundle->current_bundle, &enc);
         size_t required_size = nanocbor_encoded_len(&enc);
         uint8_t *buf = malloc(required_size);
         nanocbor_encoder_init(&enc, buf, required_size);
         bundle_encode(&temp_bundle->current_bundle, &enc);
-        DEBUG("convergence_layer: Encoded bundle: ");
-        for(int i=0;i<(int)required_size;i++){
-          DEBUG("%02x",buf[i]);
-        }
-        DEBUG(" at %p\n", &temp_bundle->current_bundle);
 
         gnrc_pktsnip_t *pkt = gnrc_pktbuf_add(NULL, buf, (int)required_size, GNRC_NETTYPE_BP);
         if (pkt == NULL) {
@@ -706,7 +612,6 @@ void send_non_bundle_ack(struct actual_bundle *bundle, gnrc_pktsnip_t *pkt) {
   uint8_t src_addr_len;
   
   char data[MAX_ACK_SIZE];
-  // struct neighbor_t *neighbor_src = NULL;
 
   netif = gnrc_netif_get_by_pid(iface);
 
@@ -716,9 +621,6 @@ void send_non_bundle_ack(struct actual_bundle *bundle, gnrc_pktsnip_t *pkt) {
 
   //TODO: Change the src_num to the node from which the packet has just been received
   src_addr_len = gnrc_netif_hdr_get_srcaddr(pkt, &temp_addr);
-  // uint8_t src_addr[src_addr_len];
-  // strncpy((char*)src_addr, (char*)temp_addr, src_addr_len);
-  // neighbor_src = get_neighbor_from_endpoint_num(bundle->primary_block.src_num);
 
   if (netif != NULL) {
       gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, temp_addr, src_addr_len);
@@ -732,6 +634,9 @@ void send_non_bundle_ack(struct actual_bundle *bundle, gnrc_pktsnip_t *pkt) {
   }
 }
 
+/* Not used for now but an provides option to send acks in form of bundles.
+ * Note: Takes more space than non bundle acks
+ */
 void send_ack(struct actual_bundle *bundle) {
   int lifetime = 1;
   struct actual_bundle *ack_bundle;
@@ -768,7 +673,6 @@ void send_ack(struct actual_bundle *bundle) {
 
 int deliver_bundles_to_application(struct registration_status *application)
 {
-  DEBUG("convergence_layer: delivering bundles to new application.\n");
   struct bundle_list *list, *temp;
   list = get_bundle_list();
   LL_FOREACH(list, temp) {
@@ -786,7 +690,6 @@ static int calculate_size_of_num(uint32_t num) {
     return 0;
   }
   int a = ((ceil(log10(num))+1)*sizeof(char)); 
-  // DEBUG("bp:size = %d.\n",a );
   return a;
 }
 

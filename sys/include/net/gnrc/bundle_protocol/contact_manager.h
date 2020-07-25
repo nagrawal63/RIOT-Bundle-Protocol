@@ -29,7 +29,7 @@ extern "C" {
 #ifdef MODULE_GNRC_CONTACT_SCHEDULER_PERIODIC
 #define NEIGHBOR_PURGE_TIMER_SECONDS (2*CONTACT_PERIOD_SECONDS)
 #elif
-#define NEIGHBOR_PURGE_TIMER_SECONDS (40) 	/*Dummy value as a fallback if periodic scheduling is not used*/
+#define NEIGHBOR_PURGE_TIMER_SECONDS (40) 	
 #endif
 
 #define SECS_TO_MICROSECS 1000000

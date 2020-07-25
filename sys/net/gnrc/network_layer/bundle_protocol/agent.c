@@ -11,14 +11,13 @@
  */
 #include "utlist.h"
 
-// #include "net/gnrc.h"
 #include "net/gnrc/netif.h"
 #include "net/gnrc/bundle_protocol/agent.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/gnrc/convergence_layer.h"
 
-#define ENABLE_DEBUG (1)
+#define ENABLE_DEBUG (0)
 #include "debug.h"
 
 static struct registration_status *application_list = NULL;
@@ -243,19 +242,6 @@ void update_statistics(int type)
 
 void print_network_statistics(void)
 {
-	// printf("Network stats:\n");
-	// printf("#*#*#Total bundles sent : %d.\n", network_stats.bundles_sent);
-	// printf("#*#*#Total bundles recieved : %d.\n", network_stats.bundles_received);
-	// printf("#*#*#Total bundles forwarded : %d.\n", network_stats.bundles_forwarded);
-	// printf("#*#*#Total bundles delivered : %d.\n", network_stats.bundles_delivered);
-	// printf("#*#*#Total bundles transmitted: %d.\n", network_stats.bundles_retransmitted);
-	// printf("#*#*#Total acks sent : %d.\n", network_stats.acks_sent);
-	// printf("#*#*#Total acks received : %d.\n", network_stats.acks_received);
-	// printf("#*#*#Total discovery bundles sent : %d.\n", network_stats.discovery_bundle_sent);
-	// printf("#*#*#Total discovery bundles received : %d.\n", network_stats.discovery_bundle_receive);
-	// printf("#*#*#Bundles in storage: %d.\n", get_current_active_bundles());
-	// printf("#*#*#Current system time: %lu.\n", xtimer_now().ticks32);
-
 	printf("#*#*,%lu, %d, %d, %d, %d, %d, %d, %d, %d,%d,%d,\n",xtimer_now().ticks32, get_current_active_bundles(), network_stats.bundles_sent, 
 						network_stats.bundles_received, network_stats.bundles_forwarded
 					, network_stats.bundles_retransmitted, network_stats.bundles_delivered, network_stats.acks_sent, network_stats.acks_received

@@ -116,7 +116,7 @@ struct endpoint{
 struct bundle_primary_block_t{ // This is the order in which the elements of the block are encoded
   uint8_t version;
   uint64_t flags;
-  uint8_t endpoint_scheme; // TODO: Assuming the dest and src nodes will have same endpoint scheme
+  uint8_t endpoint_scheme;
   uint8_t crc_type;
   uint8_t* dest_eid;
   uint8_t* src_eid;
@@ -149,7 +149,6 @@ struct actual_bundle{
   int num_of_blocks;
   uint32_t local_creation_time;
   uint8_t retention_constraint;
-  int iface; 
   uint32_t previous_endpoint_num;
 };
 

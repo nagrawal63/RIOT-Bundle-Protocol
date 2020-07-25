@@ -30,6 +30,8 @@
 
 The friendly Operating System for IoT!
 
+This RIOT fork contains the Bundle Protocol v7 (draft 23) implementation.
+
 RIOT is a real-time multi-threading operating system that supports a range of
 devices that are typically found in the Internet of Things (IoT):
 8-bit, 16-bit and 32-bit microcontrollers.

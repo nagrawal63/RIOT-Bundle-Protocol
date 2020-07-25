@@ -15,7 +15,7 @@
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "net/gnrc/bundle_protocol/bundle.h"
 
-#define ENABLE_DEBUG (1)
+#define ENABLE_DEBUG (0)
 #include "debug.h"
 
 static uint8_t next_block_number = 0;
@@ -64,7 +64,6 @@ struct actual_bundle* get_space_for_bundle(void)
     struct bundle_list *oldest_bundle = find_oldest_bundle_to_purge();
     if(delete_bundle(&oldest_bundle->current_bundle)) {
       DEBUG("bundle_storage: deleted oldest bundle .\n");
-      // get_router()->notify_bundle_deletion(&oldest_bundle->current_bundle);
       return get_space_for_bundle();
     }
     return NULL;
@@ -74,7 +73,6 @@ struct actual_bundle* get_space_for_bundle(void)
   free_list = free_list->next;
 
   if(head_of_store != ret) {
-    DEBUG("bundle_storage: head_of_store != ret.\n");
     ret->next = head_of_store;
     head_of_store = ret;
   } else {
@@ -94,7 +92,6 @@ bool delete_bundle(struct actual_bundle* bundle)
     DEBUG("bundle_storage: Bundle to be deleted is NULL.\n");
     return false;
   }
-  DEBUG("bundle_storage: Deleting bundle created at %lu.\n", bundle->local_creation_time);
   if (get_retention_constraint(bundle) != NO_RETENTION_CONSTRAINT) {
     DEBUG("bundle_storage: Cannot delete bundle since bundle's retention constraint is %u.\n", get_retention_constraint(bundle));
     return false;
@@ -119,8 +116,6 @@ bool delete_bundle(struct actual_bundle* bundle)
   }
   get_router()->notify_bundle_deletion(bundle);
   active_bundles--;
-  DEBUG("bundle_storage: Printing bundle storage after deleting.\n");
-  print_bundle_storage();
   return true;
 }
 
@@ -203,7 +198,6 @@ struct bundle_list *find_oldest_bundle_to_purge(void)
       oldest_bundle = temp;
     }
   }
-  DEBUG("bundle_storage: Will delete bundle with creation time:%lu.\n", oldest_bundle->current_bundle.local_creation_time);
   return oldest_bundle;
 }
 

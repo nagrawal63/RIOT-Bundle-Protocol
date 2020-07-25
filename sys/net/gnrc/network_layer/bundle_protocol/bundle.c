@@ -17,30 +17,14 @@
 #include "net/gnrc/bundle_protocol/bundle_storage.h"
 #include "od.h"
 
-#define ENABLE_DEBUG (1)
+#define ENABLE_DEBUG (0)
 #include "debug.h"
 
 static uint8_t sequence_num = 0;
 
-// Assuming the endpoint_scheme is the same for the src, dest and report nodes
 static bool is_fragment_bundle(struct actual_bundle* bundle);
 static int decode_primary_block_element(nanocbor_value_t *decoder, struct actual_bundle* bundle, uint8_t element);
 static int decode_canonical_block_element(nanocbor_value_t* decoder, struct bundle_canonical_block_t* block, uint8_t element);
-// static void print_canonical_block_list(struct actual_bundle *bundle) ;
-
-
-// static void print_canonical_block_list(struct actual_bundle *bundle) {
-//   struct bundle_canonical_block_t *temp = bundle->other_blocks;
-//   int i = 0;
-//   DEBUG("Bundle: Block list ==>>");
-//   while (i < bundle->num_of_blocks) {
-//     temp = &bundle->other_blocks[i];
-//     DEBUG("%d->", temp->type);
-//     i++;
-//   }
-//   DEBUG(".\n");
-//   return ;
-// }
 
 bool is_same_bundle(struct actual_bundle* current_bundle, struct actual_bundle* compare_to_bundle)
 {
@@ -76,17 +60,15 @@ static bool is_fragment_bundle(struct actual_bundle* bundle)
 
 int bundle_encode(struct actual_bundle* bundle, nanocbor_encoder_t *enc)
 {
-  //actual encoding of bundle
+  
   nanocbor_fmt_array_indefinite(enc);
 
   //parsing and encoding primary block
   encode_primary_block(bundle, enc);
-  // DEBUG("bundle: Trying to encode canonical blocks.\n");
   //encoding canonical blocks
   struct bundle_canonical_block_t* tempPtr = bundle->other_blocks;
   int i = 0;
   while(i < bundle->num_of_blocks){
-    // DEBUG("bundle: Inserting canonical block.\n");
     encode_canonical_block(&tempPtr[i], enc);
     i++;
   }
@@ -410,7 +392,7 @@ int encode_primary_block(struct actual_bundle *bundle, nanocbor_encoder_t *enc)
     nanocbor_fmt_uint(enc, bundle->primary_block.version);
     nanocbor_fmt_uint(enc, bundle->primary_block.flags);
     nanocbor_fmt_uint(enc, bundle->primary_block.crc_type);
-    // //encoding destination endpoint
+    //encoding destination endpoint
     nanocbor_fmt_array(enc,2);
     nanocbor_fmt_uint(enc,bundle->primary_block.endpoint_scheme);
     if(bundle->primary_block.endpoint_scheme == DTN){
@@ -475,12 +457,11 @@ int encode_primary_block(struct actual_bundle *bundle, nanocbor_encoder_t *enc)
     nanocbor_fmt_uint(enc, bundle->primary_block.version);
     nanocbor_fmt_uint(enc, bundle->primary_block.flags);
     nanocbor_fmt_uint(enc, bundle->primary_block.crc_type);
-    //
-    // //encoding destination endpoint
+    
+    //encoding destination endpoint
     nanocbor_fmt_array(enc,2);
     nanocbor_fmt_uint(enc,bundle->primary_block.endpoint_scheme);
     if(bundle->primary_block.endpoint_scheme == DTN){
-      DEBUG("bundle: endpoint scheme is DTN.\n");
       if(bundle->primary_block.dest_eid == NULL){
         nanocbor_fmt_uint(enc,0);
       }
@@ -489,7 +470,6 @@ int encode_primary_block(struct actual_bundle *bundle, nanocbor_encoder_t *enc)
       }
     }
     else if (bundle->primary_block.endpoint_scheme == IPN){
-      DEBUG("bundle: endpoint scheme is IPN.\n");
       nanocbor_fmt_array(enc, 2);
       nanocbor_fmt_uint(enc, bundle->primary_block.dst_num);
       nanocbor_fmt_uint(enc, bundle->primary_block.service_num);
@@ -611,7 +591,6 @@ int encode_primary_block(struct actual_bundle *bundle, nanocbor_encoder_t *enc)
     isFragment && bundle->primary-block.crc_type != NOCRC
    */
   else {
-    DEBUG("bundle: Encoding fragment bundle.\n");
     nanocbor_fmt_array(enc, 11);
     nanocbor_fmt_uint(enc, bundle->primary_block.version);
     nanocbor_fmt_uint(enc, bundle->primary_block.flags);
@@ -628,7 +607,6 @@ int encode_primary_block(struct actual_bundle *bundle, nanocbor_encoder_t *enc)
         nanocbor_put_tstr(enc,(char*)bundle->primary_block.dest_eid);
       }
     }
-    // TODO: Talk about the thing written in doubt in notes and then implement this
     else if (bundle->primary_block.endpoint_scheme == IPN){
       nanocbor_fmt_array(enc, 2);
       nanocbor_fmt_uint(enc, bundle->primary_block.dst_num);
@@ -692,8 +670,6 @@ int encode_canonical_block(struct bundle_canonical_block_t *canonical_block, nan
     nanocbor_fmt_int(enc,canonical_block->block_number);
     nanocbor_fmt_int(enc,canonical_block->flags);
     nanocbor_fmt_int(enc,canonical_block->crc_type);
-    //TODO: encoded as per the block specification (which is conflicting
-    // with the one mentioned in the block specification)
     nanocbor_put_bstr(enc,canonical_block->block_data, canonical_block->data_len);
   }
   else {
@@ -702,8 +678,6 @@ int encode_canonical_block(struct bundle_canonical_block_t *canonical_block, nan
     nanocbor_fmt_int(enc,canonical_block->block_number);
     nanocbor_fmt_int(enc,canonical_block->flags);
     nanocbor_fmt_int(enc,canonical_block->crc_type);
-    //TODO: encoded as per the block specification (which is conflicting
-    // with the one mentioned in the block specification)
     nanocbor_put_bstr(enc,canonical_block->block_data, canonical_block->data_len);
     nanocbor_fmt_int(enc, canonical_block->crc);
   }
@@ -755,7 +729,6 @@ uint16_t calculate_crc_16(uint8_t type, void *block)
     break;
     default:
     {
-      //TODO: Debug statement to send a block/bundle type for calculcation of crc
       return 0;
     }
     break;
@@ -778,7 +751,6 @@ uint32_t calculate_crc_32(uint8_t type, void *block)
       data = malloc(required_size);
       nanocbor_encoder_init(&enc, data, required_size);
       encode_primary_block((struct actual_bundle *)block, &enc);
-      // uint32_t crc_val = fletcher32(data, required_size/2);
       uint32_t crc_val = crc32_func(data, required_size, 0x00000000, CRC32_FUNCTION);
       DEBUG("bundle: crc32_val = %lu for data = ", crc_val);
       for(int i=0;i<(int)required_size;i++){
@@ -801,7 +773,6 @@ uint32_t calculate_crc_32(uint8_t type, void *block)
       data = malloc(required_size);
       nanocbor_encoder_init(&enc, data, required_size);
       encode_canonical_block((struct bundle_canonical_block_t *)block, &enc);
-      // uint32_t crc_val = fletcher32(data, required_size/2);
       uint32_t crc_val = crc32_func(data, required_size, 0x00000000, CRC32_FUNCTION);
       DEBUG("bundle: crc32_val = %lu for data = ", crc_val);
       for(int i=0;i<(int)required_size;i++){
@@ -814,7 +785,6 @@ uint32_t calculate_crc_32(uint8_t type, void *block)
     break;
     default:
     {
-      //TODO: Debug statement to send a block/bundle type for calculcation of crc
       return 0;
     }
     break;
@@ -887,7 +857,6 @@ bool verify_checksum(void *block, uint8_t type, uint32_t crc)
     break;
     default:
     {
-      //TODO: Debug statement to send a block/bundle type for calculcation of crc
       return false;
     }
     break;
@@ -907,7 +876,6 @@ void calculate_primary_flag(uint64_t *flag, bool is_fragment, bool dont_fragment
   return ;
 }
 
-//TODO: Implement block flag thing
 int calculate_canonical_flag(uint64_t *flag, bool replicate_block)
 {
   (void) replicate_block;
@@ -944,7 +912,6 @@ int fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sche
 
   bundle->previous_endpoint_num = INVALID_EID;
   calculate_primary_flag(&primary_flag, is_fragment, dont_fragment);
-  // DEBUG("bundle: value of flag while setting is '%lld'.\n", primary_flag);
   
   // Setting the primary block fields first
   if(!bundle_set_attribute(bundle, VERSION, &version)){
@@ -1013,7 +980,6 @@ int fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sche
   }else{
     // TODO: Implement creation_timestamp thing if the node actually has clock
   }
-  // DEBUG("bundle: Set version to %d.\n",bundle->primary_block.version);
 
   if(!bundle_set_attribute(bundle, LIFETIME, &lifetime)){
     DEBUG("bundle: Could not set bundle lifetime.\n");
@@ -1068,7 +1034,6 @@ int fill_bundle(struct actual_bundle* bundle, int version, uint8_t endpoint_sche
       break;
     }
   }
-  // bundle->iface = iface;
   return OK;
 }
 
@@ -1124,15 +1089,9 @@ int bundle_add_block(struct actual_bundle* bundle, uint8_t type, uint64_t flags,
       }
       break;
   }
-  // DEBUG("bundle: Inside bundle_add_block before copying block data.\n");
   memcpy(block->block_data, data, data_len);
   block->data_len = data_len;
-  // block.next = NULL;
-  // DEBUG("bundle: Data copying inside bundle over.\n");
-  // insert_block_in_bundle(bundle, &block);
   bundle->num_of_blocks++;
-  // DEBUG("bundle: Block inserted.\n");
-  // print_canonical_block_list(bundle);
   return 1;
 }
 
@@ -1228,11 +1187,7 @@ uint8_t bundle_set_attribute(struct actual_bundle* bundle, uint8_t type, void* v
   switch(type){
     case VERSION:
     {
-      // DEBUG("bundle: Setting version to %d.\n",*(uint8_t*)val);
       bundle->primary_block.version = *(uint8_t*)val;
-      // DEBUG("bundle: Set version to %d at %p.\n",bundle->primary_block.version, &bundle->primary_block.version);
-      // DEBUG("bundle: Set version to %d at %p.\n",bundle->primary_block.version, &bundle->primary_block.version);
-      // DEBUG("*****************.\n");
       return 1;
     }
     case FLAGS_PRIMARY:
@@ -1355,7 +1310,6 @@ void print_bundle(struct actual_bundle* bundle)
 
     i++;
   }
-  DEBUG("Finished printing bundle.\n");
   return ;
 }
 
@@ -1381,8 +1335,6 @@ bool is_expired_bundle(struct actual_bundle *bundle) {
   struct bundle_canonical_block_t *block = get_block_by_type(bundle, BUNDLE_BLOCK_TYPE_BUNDLE_AGE);
   if (block != NULL) {
     uint32_t usecs_from_bundle = strtoul((char*)block->block_data, NULL, block->data_len);
-    DEBUG("bundle: Bundle current age: %lu and lifetime : %lu.\n", (usecs_from_bundle + (xtimer_now().ticks32 - bundle->local_creation_time))
-                                                                                    , bundle->primary_block.lifetime);
     if ((usecs_from_bundle + (xtimer_now().ticks32 - bundle->local_creation_time)) >= bundle->primary_block.lifetime) {
       DEBUG("bundle: Bundle is expired with current age: %lu and lifetime : %lu.\n", (usecs_from_bundle + (xtimer_now().ticks32 - bundle->local_creation_time))
                                                                                     , bundle->primary_block.lifetime);
