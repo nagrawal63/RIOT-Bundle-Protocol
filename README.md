@@ -28,6 +28,9 @@
          ZZZZZZZZZZZ               Z
             ZZZZZ
 
+This version of RIOT OS supports Bundle Protocol as well. I have implemented the [Bundle Protocol Draft 24](https://datatracker.ietf.org/doc/draft-ietf-dtn-bpbis/24/).
+
+
 The friendly Operating System for IoT!
 
 This RIOT fork contains the Bundle Protocol v7 (draft 23) implementation.
